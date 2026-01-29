@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/auth/presentation/pages/signup_screen.dart';
 import '../../features/catalog/presentation/pages/home_screen.dart';
+import '../../features/catalog/presentation/pages/catalog_screen.dart';
 import '../../features/profile/presentation/pages/profile_screen.dart';
 import '../../features/profile/presentation/pages/edit_profile_screen.dart';
 import 'app_routes.dart';
@@ -51,6 +52,11 @@ GoRouter createRouter() {
         path: AppRoutes.profile,
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.catalog,
+        name: 'catalog',
+        builder: (context, state) => const CatalogScreen(),
       ),
       GoRoute(
         path: AppRoutes.editProfile,

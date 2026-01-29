@@ -1,0 +1,218 @@
+import 'package:flutter/material.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../domain/entities/media.dart';
+
+class MediaDetailScreen extends StatelessWidget {
+  final Media media;
+
+  const MediaDetailScreen({super.key, required this.media});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 300,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              title: Text(
+                media.title,
+                style: const TextStyle(
+                  shadows: [
+                    Shadow(
+                      offset: Offset(0, 1),
+                      blurRadius: 3.0,
+                      color: Colors.black87,
+                    ),
+                  ],
+                ),
+              ),
+              background: _buildBackdrop(),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildMetadata(context),
+                  const SizedBox(height: 24),
+                  if (media.overview != null && media.overview!.isNotEmpty) ...[
+                    Text(
+                      'Synopsis',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      media.overview!,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                  if (media.genres.isNotEmpty) ...[
+                    Text(
+                      'Genres',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: media.genres
+                          .map(
+                            (genre) => Chip(
+                              label: Text(genre),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                  if (media.type == 'tv' &&
+                      (media.numberOfSeasons != null ||
+                          media.numberOfEpisodes != null)) ...[
+                    Text(
+                      'Informations série',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    if (media.numberOfSeasons != null)
+                      Text(
+                        '${media.numberOfSeasons} saison(s)',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    if (media.numberOfEpisodes != null)
+                      Text(
+                        '${media.numberOfEpisodes} épisode(s)',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBackdrop() {
+    final imagePath = media.backdropPath ?? media.posterPath;
+    if (imagePath == null || imagePath.isEmpty) {
+      return Container(
+        color: Colors.grey[800],
+        child: const Center(
+          child: Icon(Icons.movie, size: 64, color: Colors.white54),
+        ),
+      );
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          '${ApiConstants.tmdbImageBaseUrl}$imagePath',
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              color: Colors.grey[800],
+              child: const Center(
+                child: Icon(Icons.movie, size: 64, color: Colors.white54),
+              ),
+            );
+          },
+        ),
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetadata(BuildContext context) {
+    return Row(
+      children: [
+        if (media.posterPath != null) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              '${ApiConstants.tmdbImageBaseUrl}${media.posterPath}',
+              width: 100,
+              height: 150,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  width: 100,
+                  height: 150,
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.movie),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 16),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _getTypeLabel(),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              if (media.releaseDate != null)
+                Text(
+                  '${media.releaseDate!.year}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
+                ),
+              if (media.voteAverage != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.star, color: Colors.amber, size: 20),
+                    const SizedBox(width: 4),
+                    Text(
+                      media.voteAverage!.toStringAsFixed(1),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(' / 10', style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getTypeLabel() {
+    switch (media.type) {
+      case 'movie':
+        return 'Film';
+      case 'tv':
+        return 'Série TV';
+      case 'anime':
+        return 'Animé';
+      default:
+        return media.type.toUpperCase();
+    }
+  }
+}
