@@ -10,6 +10,12 @@ import '../../features/profile/data/repositories/profile_repository_impl.dart';
 import '../../features/profile/domain/repositories/profile_repository.dart';
 import '../../features/profile/domain/usecases/profile_usecases.dart';
 import '../../features/profile/presentation/cubit/profile_cubit.dart';
+import '../../features/catalog/data/datasources/catalog_remote_data_source.dart';
+import '../../features/catalog/data/datasources/tmdb_remote_data_source.dart';
+import '../../features/catalog/data/repositories/catalog_repository_impl.dart';
+import '../../features/catalog/domain/repositories/catalog_repository.dart';
+import '../../features/catalog/domain/usecases/catalog_usecases.dart';
+import '../../features/catalog/presentation/bloc/catalog_bloc.dart';
 
 /// Service locator pour l'injection de dépendances
 final getIt = GetIt.instance;
@@ -86,6 +92,51 @@ Future<void> setupServiceLocator() async {
       getUserProfileUseCase: getIt<GetUserProfileUseCase>(),
       updateUserProfileUseCase: getIt<UpdateUserProfileUseCase>(),
       uploadProfileImageUseCase: getIt<UploadProfileImageUseCase>(),
+    ),
+  );
+
+  // ===== CATALOG FEATURE =====
+  // Data Sources
+  getIt.registerSingleton<TmdbRemoteDataSource>(
+    TmdbRemoteDataSourceImpl(dioClient: getIt<DioClient>()),
+  );
+  getIt.registerSingleton<CatalogRemoteDataSource>(
+    CatalogRemoteDataSourceImpl(),
+  );
+
+  // Repositories
+  getIt.registerSingleton<CatalogRepository>(
+    CatalogRepositoryImpl(
+      catalogRemoteDataSource: getIt<CatalogRemoteDataSource>(),
+      tmdbRemoteDataSource: getIt<TmdbRemoteDataSource>(),
+    ),
+  );
+
+  // Use Cases
+  getIt.registerSingleton<SearchMediaUseCase>(
+    SearchMediaUseCase(getIt<CatalogRepository>()),
+  );
+  getIt.registerSingleton<GetUserCatalogUseCase>(
+    GetUserCatalogUseCase(getIt<CatalogRepository>()),
+  );
+  getIt.registerSingleton<AddToCatalogUseCase>(
+    AddToCatalogUseCase(getIt<CatalogRepository>()),
+  );
+  getIt.registerSingleton<UpdateCatalogStatusUseCase>(
+    UpdateCatalogStatusUseCase(getIt<CatalogRepository>()),
+  );
+  getIt.registerSingleton<RemoveFromCatalogUseCase>(
+    RemoveFromCatalogUseCase(getIt<CatalogRepository>()),
+  );
+
+  // BLoCs
+  getIt.registerFactory<CatalogBloc>(
+    () => CatalogBloc(
+      searchMediaUseCase: getIt<SearchMediaUseCase>(),
+      getUserCatalogUseCase: getIt<GetUserCatalogUseCase>(),
+      addToCatalogUseCase: getIt<AddToCatalogUseCase>(),
+      updateCatalogStatusUseCase: getIt<UpdateCatalogStatusUseCase>(),
+      removeFromCatalogUseCase: getIt<RemoveFromCatalogUseCase>(),
     ),
   );
 }

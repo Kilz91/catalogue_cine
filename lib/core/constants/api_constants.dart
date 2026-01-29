@@ -3,9 +3,8 @@ class ApiConstants {
   static const String tmdbBaseUrl = 'https://api.themoviedb.org/3';
   static const String tmdbImageBaseUrl = 'https://image.tmdb.org/t/p/w500';
 
-  // Les clés d'API doivent être en variables d'environnement en production
-  // Placeholder pour développement
-  static const String tmdbApiKey = 'YOUR_TMDB_API_KEY';
+  // Clé API TMDb
+  static const String tmdbApiKey = '2429a2f20c1592f674bfc8dd65baa7a3';
 
   // Endpoints TMDb
   static const String movieSearchEndpoint = '/search/movie';
