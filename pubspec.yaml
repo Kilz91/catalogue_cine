@@ -1,0 +1,54 @@
+name: catalogue_cine
+description: "A new Flutter project."
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_bloc: ^8.1.5
+  bloc: ^8.1.4
+
+  # Data models and serialization
+  json_serializable: ^6.9.2
+  json_annotation: ^4.10.0
+
+  # Networking
+  dio: ^5.4.3+1
+  http: ^1.2.0
+
+  # Dependency Injection
+  get_it: ^7.7.0
+
+  # Navigation
+  go_router: ^14.2.7
+
+  # Firebase
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.0
+  cloud_firestore: ^5.6.0
+
+  # Local storage
+  shared_preferences: ^2.2.3
+
+  # Utilities
+  uuid: ^4.1.0
+  intl: ^0.19.0
+  equatable: ^2.0.5
+  dartz: ^0.10.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # Code generation
+  build_runner: ^2.4.12
+
+flutter:
+  uses-material-design: true
