@@ -8,11 +8,12 @@ abstract class AppRoutes {
   // Home / Catalog Routes
   static const String home = '/';
   static const String catalog = '/catalog';
+  static const String mediaDetail = '/media';
   static const String mediaDetails = '/media/:id/:type';
   static const String addToLibrary = '/add-to-library/:id/:type';
 
   // Actors Routes
-  static const String actorDetails = '/actor/:id';
+  static const String actorDetails = '/actor';
   static const String actorCredits = '/actor/:id/credits';
 
   // Friends Routes

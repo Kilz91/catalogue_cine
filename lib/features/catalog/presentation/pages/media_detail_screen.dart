@@ -1,107 +1,174 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/di/service_locator.dart';
 import '../../domain/entities/media.dart';
+import '../../../actors/presentation/bloc/actor_bloc.dart';
+import '../../../actors/presentation/bloc/actor_event.dart';
+import '../../../actors/presentation/bloc/actor_state.dart';
+import '../../../actors/presentation/widgets/media_cast_list.dart';
 
 class MediaDetailScreen extends StatelessWidget {
-  final Media media;
+  final int mediaId;
+  final Media? media;
 
-  const MediaDetailScreen({super.key, required this.media});
+  const MediaDetailScreen({
+    super.key,
+    required this.mediaId,
+    this.media,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                media.title,
-                style: const TextStyle(
-                  shadows: [
-                    Shadow(
-                      offset: Offset(0, 1),
-                      blurRadius: 3.0,
-                      color: Colors.black87,
+    // Si on a déjà l'objet media, l'utiliser, sinon il faudra le charger
+    if (media == null) {
+      // TODO: Charger le média depuis l'API si pas fourni
+      return Scaffold(
+        appBar: AppBar(title: const Text('Détails')),
+        body: const Center(child: Text('Chargement...')),
+      );
+    }
+
+    return BlocProvider(
+      create: (_) => getIt<ActorBloc>()
+        ..add(LoadMediaCastEvent(
+          mediaId: mediaId,
+          mediaType: media!.type,
+        )),
+      child: Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 300,
+              pinned: true,
+              flexibleSpace: FlexibleSpaceBar(
+                title: Text(
+                  media!.title,
+                  style: const TextStyle(
+                    shadows: [
+                      Shadow(
+                        offset: Offset(0, 1),
+                        blurRadius: 3.0,
+                        color: Colors.black87,
+                      ),
+                    ],
+                  ),
+                ),
+                background: _buildBackdrop(),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildMetadata(context),
+                    const SizedBox(height: 24),
+                    if (media!.overview != null &&
+                        media!.overview!.isNotEmpty) ...[
+                      Text(
+                        'Synopsis',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        media!.overview!,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                    if (media!.genres.isNotEmpty) ...[
+                      Text(
+                        'Genres',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: media!.genres
+                            .map(
+                              (genre) => Chip(
+                                label: Text(genre),
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primaryContainer,
+                              ),
+                            )
+                            .toList(),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                    if (media!.type == 'tv' &&
+                        (media!.numberOfSeasons != null ||
+                            media!.numberOfEpisodes != null)) ...[
+                      Text(
+                        'Informations série',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      if (media!.numberOfSeasons != null)
+                        Text(
+                          '${media!.numberOfSeasons} saison(s)',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      if (media!.numberOfEpisodes != null)
+                        Text(
+                          '${media!.numberOfEpisodes} épisode(s)',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      const SizedBox(height: 24),
+                    ],
+                    // Cast section
+                    BlocBuilder<ActorBloc, ActorState>(
+                      builder: (context, state) {
+                        if (state is MediaCastLoadedState) {
+                          return MediaCastList(cast: state.cast);
+                        }
+                        if (state is ActorErrorState) {
+                          return Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline, color: Colors.orange),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Impossible de charger le casting',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        if (state is ActorLoadingState) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(
+                              child: SizedBox(
+                                height: 40,
+                                width: 40,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
                     ),
                   ],
                 ),
               ),
-              background: _buildBackdrop(),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildMetadata(context),
-                  const SizedBox(height: 24),
-                  if (media.overview != null && media.overview!.isNotEmpty) ...[
-                    Text(
-                      'Synopsis',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      media.overview!,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                  if (media.genres.isNotEmpty) ...[
-                    Text(
-                      'Genres',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: media.genres
-                          .map(
-                            (genre) => Chip(
-                              label: Text(genre),
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primaryContainer,
-                            ),
-                          )
-                          .toList(),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                  if (media.type == 'tv' &&
-                      (media.numberOfSeasons != null ||
-                          media.numberOfEpisodes != null)) ...[
-                    Text(
-                      'Informations série',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    if (media.numberOfSeasons != null)
-                      Text(
-                        '${media.numberOfSeasons} saison(s)',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    if (media.numberOfEpisodes != null)
-                      Text(
-                        '${media.numberOfEpisodes} épisode(s)',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildBackdrop() {
-    final imagePath = media.backdropPath ?? media.posterPath;
+    final imagePath = media!.backdropPath ?? media!.posterPath;
     if (imagePath == null || imagePath.isEmpty) {
       return Container(
         color: Colors.grey[800],
@@ -130,7 +197,7 @@ class MediaDetailScreen extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+              colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
             ),
           ),
         ),
@@ -141,11 +208,11 @@ class MediaDetailScreen extends StatelessWidget {
   Widget _buildMetadata(BuildContext context) {
     return Row(
       children: [
-        if (media.posterPath != null) ...[
+        if (media!.posterPath != null) ...[
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.network(
-              '${ApiConstants.tmdbImageBaseUrl}${media.posterPath}',
+              '${ApiConstants.tmdbImageBaseUrl}${media!.posterPath}',
               width: 100,
               height: 150,
               fit: BoxFit.cover,
@@ -173,21 +240,21 @@ class MediaDetailScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              if (media.releaseDate != null)
+              if (media!.releaseDate != null)
                 Text(
-                  '${media.releaseDate!.year}',
+                  '${media!.releaseDate!.year}',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
                 ),
-              if (media.voteAverage != null) ...[
+              if (media!.voteAverage != null) ...[
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     const Icon(Icons.star, color: Colors.amber, size: 20),
                     const SizedBox(width: 4),
                     Text(
-                      media.voteAverage!.toStringAsFixed(1),
+                      media!.voteAverage!.toStringAsFixed(1),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -204,7 +271,7 @@ class MediaDetailScreen extends StatelessWidget {
   }
 
   String _getTypeLabel() {
-    switch (media.type) {
+    switch (media!.type) {
       case 'movie':
         return 'Film';
       case 'tv':
@@ -212,7 +279,7 @@ class MediaDetailScreen extends StatelessWidget {
       case 'anime':
         return 'Animé';
       default:
-        return media.type.toUpperCase();
+        return media!.type.toUpperCase();
     }
   }
 }
