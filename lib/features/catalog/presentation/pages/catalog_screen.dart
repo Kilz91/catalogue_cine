@@ -190,7 +190,12 @@ class _CatalogScreenState extends State<CatalogScreen>
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => MediaDetailScreen(media: media)),
+            MaterialPageRoute(
+              builder: (_) => MediaDetailScreen(
+                mediaId: media.id,
+                media: media,
+              ),
+            ),
           );
         },
         trailing: IconButton(
@@ -211,7 +216,10 @@ class _CatalogScreenState extends State<CatalogScreen>
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => MediaDetailScreen(media: userMedia.media),
+              builder: (_) => MediaDetailScreen(
+                mediaId: userMedia.media.id,
+                media: userMedia.media,
+              ),
             ),
           );
         },

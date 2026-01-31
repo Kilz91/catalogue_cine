@@ -5,8 +5,10 @@ import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/auth/presentation/pages/signup_screen.dart';
 import '../../features/catalog/presentation/pages/home_screen.dart';
 import '../../features/catalog/presentation/pages/catalog_screen.dart';
+import '../../features/catalog/presentation/pages/media_detail_screen.dart';
 import '../../features/profile/presentation/pages/profile_screen.dart';
 import '../../features/profile/presentation/pages/edit_profile_screen.dart';
+import '../../features/actors/presentation/pages/actor_details_screen.dart';
 import 'app_routes.dart';
 import 'auth_notifier.dart';
 
@@ -62,6 +64,26 @@ GoRouter createRouter() {
         path: AppRoutes.editProfile,
         name: 'editProfile',
         builder: (context, state) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: '${AppRoutes.mediaDetail}/:id',
+        name: 'mediaDetail',
+        builder: (context, state) {
+          final id = int.parse(state.pathParameters['id']!);
+          // Extraire le media depuis les extras si fourni
+          final media = state.extra != null && state.extra is Map
+              ? (state.extra as Map)['media']
+              : null;
+          return MediaDetailScreen(mediaId: id, media: media);
+        },
+      ),
+      GoRoute(
+        path: '${AppRoutes.actorDetails}/:id',
+        name: 'actorDetails',
+        builder: (context, state) {
+          final id = int.parse(state.pathParameters['id']!);
+          return ActorDetailsScreen(actorId: id);
+        },
       ),
     ],
     errorBuilder: (context, state) {

@@ -16,6 +16,11 @@ import '../../features/catalog/data/repositories/catalog_repository_impl.dart';
 import '../../features/catalog/domain/repositories/catalog_repository.dart';
 import '../../features/catalog/domain/usecases/catalog_usecases.dart';
 import '../../features/catalog/presentation/bloc/catalog_bloc.dart';
+import '../../features/actors/data/datasources/tmdb_actor_data_source.dart';
+import '../../features/actors/data/repositories/actor_repository_impl.dart';
+import '../../features/actors/domain/repositories/actor_repository.dart';
+import '../../features/actors/domain/usecases/actor_usecases.dart';
+import '../../features/actors/presentation/bloc/actor_bloc.dart';
 
 /// Service locator pour l'injection de dépendances
 final getIt = GetIt.instance;
@@ -137,6 +142,37 @@ Future<void> setupServiceLocator() async {
       addToCatalogUseCase: getIt<AddToCatalogUseCase>(),
       updateCatalogStatusUseCase: getIt<UpdateCatalogStatusUseCase>(),
       removeFromCatalogUseCase: getIt<RemoveFromCatalogUseCase>(),
+    ),
+  );
+
+  // ===== ACTORS FEATURE =====
+  // Data Sources
+  getIt.registerSingleton<TmdbActorDataSource>(
+    TmdbActorDataSourceImpl(dioClient: getIt<DioClient>()),
+  );
+
+  // Repositories
+  getIt.registerSingleton<ActorRepository>(
+    ActorRepositoryImpl(tmdbDataSource: getIt<TmdbActorDataSource>()),
+  );
+
+  // Use Cases
+  getIt.registerSingleton<GetActorDetailsUseCase>(
+    GetActorDetailsUseCase(getIt<ActorRepository>()),
+  );
+  getIt.registerSingleton<GetActorCreditsUseCase>(
+    GetActorCreditsUseCase(getIt<ActorRepository>()),
+  );
+  getIt.registerSingleton<GetMediaCastUseCase>(
+    GetMediaCastUseCase(getIt<ActorRepository>()),
+  );
+
+  // BLoCs
+  getIt.registerFactory<ActorBloc>(
+    () => ActorBloc(
+      getActorDetailsUseCase: getIt<GetActorDetailsUseCase>(),
+      getActorCreditsUseCase: getIt<GetActorCreditsUseCase>(),
+      getMediaCastUseCase: getIt<GetMediaCastUseCase>(),
     ),
   );
 }
