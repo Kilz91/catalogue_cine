@@ -21,6 +21,14 @@ import '../../features/actors/data/repositories/actor_repository_impl.dart';
 import '../../features/actors/domain/repositories/actor_repository.dart';
 import '../../features/actors/domain/usecases/actor_usecases.dart';
 import '../../features/actors/presentation/bloc/actor_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../features/progress/data/datasources/progress_remote_datasource.dart';
+import '../../features/progress/data/repositories/progress_repository_impl.dart';
+import '../../features/progress/domain/repositories/progress_repository.dart';
+import '../../features/progress/domain/usecases/get_media_progress_usecase.dart';
+import '../../features/progress/domain/usecases/update_progress_usecase.dart';
+import '../../features/progress/presentation/bloc/progress_bloc.dart';
 
 /// Service locator pour l'injection de dépendances
 final getIt = GetIt.instance;
@@ -121,6 +129,9 @@ Future<void> setupServiceLocator() async {
   getIt.registerSingleton<SearchMediaUseCase>(
     SearchMediaUseCase(getIt<CatalogRepository>()),
   );
+  getIt.registerSingleton<GetMediaDetailsUseCase>(
+    GetMediaDetailsUseCase(getIt<CatalogRepository>()),
+  );
   getIt.registerSingleton<GetUserCatalogUseCase>(
     GetUserCatalogUseCase(getIt<CatalogRepository>()),
   );
@@ -173,6 +184,38 @@ Future<void> setupServiceLocator() async {
       getActorDetailsUseCase: getIt<GetActorDetailsUseCase>(),
       getActorCreditsUseCase: getIt<GetActorCreditsUseCase>(),
       getMediaCastUseCase: getIt<GetMediaCastUseCase>(),
+    ),
+  );
+
+  // ===== PROGRESS FEATURE =====
+  // Data Sources
+  getIt.registerSingleton<ProgressRemoteDataSource>(
+    ProgressRemoteDataSourceImpl(
+      FirebaseFirestore.instance,
+      FirebaseAuth.instance,
+    ),
+  );
+
+  // Repositories
+  getIt.registerSingleton<ProgressRepository>(
+    ProgressRepositoryImpl(
+      getIt<ProgressRemoteDataSource>(),
+    ),
+  );
+
+  // Use Cases
+  getIt.registerSingleton<GetMediaProgressUseCase>(
+    GetMediaProgressUseCase(getIt<ProgressRepository>()),
+  );
+  getIt.registerSingleton<UpdateProgressUseCase>(
+    UpdateProgressUseCase(getIt<ProgressRepository>()),
+  );
+
+  // BLoCs
+  getIt.registerFactory<ProgressBloc>(
+    () => ProgressBloc(
+      getMediaProgressUseCase: getIt<GetMediaProgressUseCase>(),
+      updateProgressUseCase: getIt<UpdateProgressUseCase>(),
     ),
   );
 }

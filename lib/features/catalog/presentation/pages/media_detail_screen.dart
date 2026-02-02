@@ -3,12 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../domain/entities/media.dart';
+import '../../domain/usecases/catalog_usecases.dart';
 import '../../../actors/presentation/bloc/actor_bloc.dart';
 import '../../../actors/presentation/bloc/actor_event.dart';
 import '../../../actors/presentation/bloc/actor_state.dart';
 import '../../../actors/presentation/widgets/media_cast_list.dart';
+import '../../../progress/presentation/widgets/media_progress_card.dart';
 
-class MediaDetailScreen extends StatelessWidget {
+class MediaDetailScreen extends StatefulWidget {
   final int mediaId;
   final Media? media;
 
@@ -19,21 +21,69 @@ class MediaDetailScreen extends StatelessWidget {
   });
 
   @override
+  State<MediaDetailScreen> createState() => _MediaDetailScreenState();
+}
+
+class _MediaDetailScreenState extends State<MediaDetailScreen> {
+  Media? _loadedMedia;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Si media est fourni, l'utiliser directement
+    if (widget.media != null) {
+      _loadedMedia = widget.media;
+      // Charger les détails complets en arrière-plan pour avoir numberOfSeasons/numberOfEpisodes
+      if (widget.media!.type == 'tv' || widget.media!.type == 'anime') {
+        _loadMediaDetails();
+      }
+    } else {
+      // Sinon, charger le média depuis l'API
+      _loadMediaDetails();
+    }
+  }
+
+  Future<void> _loadMediaDetails() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final useCase = getIt<GetMediaDetailsUseCase>();
+      final detailedMedia = await useCase(
+        mediaId: widget.mediaId,
+        type: _loadedMedia?.type ?? 'movie', // Fallback si type inconnu
+      );
+      if (mounted) {
+        setState(() {
+          _loadedMedia = detailedMedia;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Si on a déjà l'objet media, l'utiliser, sinon il faudra le charger
-    if (media == null) {
-      // TODO: Charger le média depuis l'API si pas fourni
+    // Afficher un écran de chargement si aucun média n'est disponible
+    if (_loadedMedia == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Détails')),
-        body: const Center(child: Text('Chargement...')),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
+
+    final media = _loadedMedia!;
 
     return BlocProvider(
       create: (_) => getIt<ActorBloc>()
         ..add(LoadMediaCastEvent(
-          mediaId: mediaId,
-          mediaType: media!.type,
+          mediaId: widget.mediaId,
+          mediaType: media.type,
         )),
       child: Scaffold(
         body: CustomScrollView(
@@ -43,7 +93,7 @@ class MediaDetailScreen extends StatelessWidget {
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
                 title: Text(
-                  media!.title,
+                  media.title,
                   style: const TextStyle(
                     shadows: [
                       Shadow(
@@ -54,7 +104,7 @@ class MediaDetailScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                background: _buildBackdrop(),
+                background: _buildBackdrop(media),
               ),
             ),
             SliverToBoxAdapter(
@@ -63,22 +113,30 @@ class MediaDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildMetadata(context),
+                    _buildMetadata(context, media),
                     const SizedBox(height: 24),
-                    if (media!.overview != null &&
-                        media!.overview!.isNotEmpty) ...[
+                    if (media.overview != null &&
+                        media.overview!.isNotEmpty) ...[
                       Text(
                         'Synopsis',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        media!.overview!,
+                        media.overview!,
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 24),
                     ],
-                    if (media!.genres.isNotEmpty) ...[
+                    // Widget suivi de progression
+                    MediaProgressCard(
+                      mediaId: widget.mediaId,
+                      mediaType: media.type,
+                      totalEpisodes: media.numberOfEpisodes ?? 1,
+                      totalSeasons: media.numberOfSeasons ?? 1,
+                    ),
+                    const SizedBox(height: 24),
+                    if (media.genres.isNotEmpty) ...[
                       Text(
                         'Genres',
                         style: Theme.of(context).textTheme.titleLarge,
@@ -86,7 +144,7 @@ class MediaDetailScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
-                        children: media!.genres
+                        children: media.genres
                             .map(
                               (genre) => Chip(
                                 label: Text(genre),
@@ -99,22 +157,22 @@ class MediaDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 24),
                     ],
-                    if (media!.type == 'tv' &&
-                        (media!.numberOfSeasons != null ||
-                            media!.numberOfEpisodes != null)) ...[
+                    if ((media.type == 'tv' || media.type == 'anime') &&
+                        (media.numberOfSeasons != null ||
+                            media.numberOfEpisodes != null)) ...[
                       Text(
                         'Informations série',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 8),
-                      if (media!.numberOfSeasons != null)
+                      if (media.numberOfSeasons != null)
                         Text(
-                          '${media!.numberOfSeasons} saison(s)',
+                          '${media.numberOfSeasons} saison(s)',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                      if (media!.numberOfEpisodes != null)
+                      if (media.numberOfEpisodes != null)
                         Text(
-                          '${media!.numberOfEpisodes} épisode(s)',
+                          '${media.numberOfEpisodes} épisode(s)',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       const SizedBox(height: 24),
@@ -167,8 +225,8 @@ class MediaDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBackdrop() {
-    final imagePath = media!.backdropPath ?? media!.posterPath;
+  Widget _buildBackdrop(Media media) {
+    final imagePath = media.backdropPath ?? media.posterPath;
     if (imagePath == null || imagePath.isEmpty) {
       return Container(
         color: Colors.grey[800],
@@ -205,14 +263,14 @@ class MediaDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetadata(BuildContext context) {
+  Widget _buildMetadata(BuildContext context, Media media) {
     return Row(
       children: [
-        if (media!.posterPath != null) ...[
+        if (media.posterPath != null) ...[
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.network(
-              '${ApiConstants.tmdbImageBaseUrl}${media!.posterPath}',
+              '${ApiConstants.tmdbImageBaseUrl}${media.posterPath}',
               width: 100,
               height: 150,
               fit: BoxFit.cover,
@@ -233,28 +291,28 @@ class MediaDetailScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _getTypeLabel(),
+                _getTypeLabel(media),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Colors.grey[600],
                   fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 4),
-              if (media!.releaseDate != null)
+              if (media.releaseDate != null)
                 Text(
-                  '${media!.releaseDate!.year}',
+                  '${media.releaseDate!.year}',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
                 ),
-              if (media!.voteAverage != null) ...[
+              if (media.voteAverage != null) ...[
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     const Icon(Icons.star, color: Colors.amber, size: 20),
                     const SizedBox(width: 4),
                     Text(
-                      media!.voteAverage!.toStringAsFixed(1),
+                      media.voteAverage!.toStringAsFixed(1),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -270,8 +328,8 @@ class MediaDetailScreen extends StatelessWidget {
     );
   }
 
-  String _getTypeLabel() {
-    switch (media!.type) {
+  String _getTypeLabel(Media media) {
+    switch (media.type) {
       case 'movie':
         return 'Film';
       case 'tv':
@@ -279,7 +337,7 @@ class MediaDetailScreen extends StatelessWidget {
       case 'anime':
         return 'Animé';
       default:
-        return media!.type.toUpperCase();
+        return media.type.toUpperCase();
     }
   }
 }

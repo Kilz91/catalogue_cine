@@ -29,6 +29,10 @@ class NotFoundFailure extends Failure {
   NotFoundFailure(super.message);
 }
 
+class ServerFailure extends Failure {
+  ServerFailure(super.message);
+}
+
 class ValidationFailure extends Failure {
   ValidationFailure(super.message);
 }

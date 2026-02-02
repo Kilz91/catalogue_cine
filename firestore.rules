@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Règles pour les utilisateurs
+    match /users/{userId} {
+      // L'utilisateur peut lire et écrire ses propres données
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Sous-collection progress
+      match /progress/{progressId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Sous-collection catalog
+      match /catalog/{catalogId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Bloquer tout accès par défaut
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
