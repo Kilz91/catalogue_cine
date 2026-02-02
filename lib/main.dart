@@ -8,6 +8,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
+import 'features/progress/presentation/bloc/progress_bloc.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -40,6 +41,9 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider<AuthBloc>(
           create: (_) => getIt<AuthBloc>()..add(CheckAuthStatusEvent()),
+        ),
+        BlocProvider<ProgressBloc>(
+          create: (_) => getIt<ProgressBloc>(),
         ),
       ],
       child: MaterialApp.router(

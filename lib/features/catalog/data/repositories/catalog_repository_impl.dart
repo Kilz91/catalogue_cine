@@ -25,6 +25,18 @@ class CatalogRepositoryImpl implements CatalogRepository {
     );
     return results.map((model) => model.toEntity()).toList();
   }
+  
+  @override
+  Future<Media> getMediaDetails({
+    required int mediaId,
+    required String type,
+  }) async {
+    final model = await tmdbRemoteDataSource.getMediaDetails(
+      mediaId: mediaId,
+      type: type,
+    );
+    return model.toEntity();
+  }
 
   @override
   Future<List<UserMedia>> getUserCatalog({String? status}) async {

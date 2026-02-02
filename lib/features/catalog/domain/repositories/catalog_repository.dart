@@ -8,6 +8,12 @@ abstract class CatalogRepository {
     required String query,
     required String type, // movie | tv | anime
   });
+  
+  /// Récupérer les détails complets d'un média
+  Future<Media> getMediaDetails({
+    required int mediaId,
+    required String type, // movie | tv
+  });
 
   /// Récupérer le catalogue utilisateur
   Future<List<UserMedia>> getUserCatalog({String? status});

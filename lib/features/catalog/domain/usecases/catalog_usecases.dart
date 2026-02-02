@@ -12,6 +12,16 @@ class SearchMediaUseCase {
   }
 }
 
+/// Récupérer les détails complets d'un média
+class GetMediaDetailsUseCase {
+  final CatalogRepository repository;
+  GetMediaDetailsUseCase(this.repository);
+
+  Future<Media> call({required int mediaId, required String type}) {
+    return repository.getMediaDetails(mediaId: mediaId, type: type);
+  }
+}
+
 /// Récupérer le catalogue utilisateur
 class GetUserCatalogUseCase {
   final CatalogRepository repository;

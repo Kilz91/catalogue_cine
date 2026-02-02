@@ -8,6 +8,11 @@ abstract class TmdbRemoteDataSource {
     required String query,
     required String type, // movie | tv | anime
   });
+  
+  Future<MediaModel> getMediaDetails({
+    required int mediaId,
+    required String type, // movie | tv
+  });
 }
 
 class TmdbRemoteDataSourceImpl implements TmdbRemoteDataSource {
@@ -52,5 +57,25 @@ class TmdbRemoteDataSourceImpl implements TmdbRemoteDataSource {
     return jsonResults
         .map((json) => MediaModel.fromTmdbJson(json, type))
         .toList();
+  }
+  
+  @override
+  Future<MediaModel> getMediaDetails({
+    required int mediaId,
+    required String type,
+  }) async {
+    final path = type == 'movie'
+        ? ApiConstants.movieDetailsEndpoint.replaceAll('{id}', '$mediaId')
+        : ApiConstants.tvDetailsEndpoint.replaceAll('{id}', '$mediaId');
+
+    final response = await _dioClient.get(
+      path,
+      queryParameters: {
+        'api_key': ApiConstants.tmdbApiKey,
+        'language': ApiConstants.languageParam,
+      },
+    );
+
+    return MediaModel.fromTmdbJson(response, type);
   }
 }
