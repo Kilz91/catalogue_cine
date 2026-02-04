@@ -62,6 +62,12 @@ DateTime? _dateTimeFromJson(dynamic json) {
   if (json == null) return null;
   if (json is int) return DateTime.fromMillisecondsSinceEpoch(json);
   if (json is String) return DateTime.parse(json);
+  // Gérer les Firestore Timestamps
+  if (json is Map && json.containsKey('_seconds')) {
+    final seconds = json['_seconds'] as int;
+    final milliseconds = seconds * 1000;
+    return DateTime.fromMillisecondsSinceEpoch(milliseconds);
+  }
   return null;
 }
 

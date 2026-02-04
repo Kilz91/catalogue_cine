@@ -68,15 +68,25 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       }
 
       final data = doc.data()!;
+      
+      // Convertir createdAt (peut être Timestamp Firestore ou String)
+      DateTime? createdAt;
+      if (data['createdAt'] != null) {
+        final createdAtValue = data['createdAt'];
+        if (createdAtValue is Timestamp) {
+          createdAt = createdAtValue.toDate();
+        } else if (createdAtValue is String) {
+          createdAt = DateTime.parse(createdAtValue);
+        }
+      }
+      
       return User(
         id: currentUser.uid,
         email: data['email'] ?? currentUser.email ?? '',
         displayName: data['displayName'] ?? currentUser.displayName,
         profileImageUrl: data['profileImageUrl'] ?? currentUser.photoURL,
         bio: data['bio'],
-        createdAt: data['createdAt'] != null
-            ? DateTime.parse(data['createdAt'])
-            : currentUser.metadata.creationTime,
+        createdAt: createdAt ?? currentUser.metadata.creationTime,
         isVerified: data['isVerified'] ?? currentUser.emailVerified,
       );
     } on UnauthorizedException {
