@@ -34,3 +34,8 @@ class PermissionDeniedException extends AppException {
 class NotFoundException extends AppException {
   NotFoundException(super.message);
 }
+
+/// Exception serveur
+class ServerException extends AppException {
+  ServerException(super.message);
+}

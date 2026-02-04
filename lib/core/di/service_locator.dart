@@ -29,6 +29,11 @@ import '../../features/progress/domain/repositories/progress_repository.dart';
 import '../../features/progress/domain/usecases/get_media_progress_usecase.dart';
 import '../../features/progress/domain/usecases/update_progress_usecase.dart';
 import '../../features/progress/presentation/bloc/progress_bloc.dart';
+import '../../features/friends/data/datasources/friends_remote_datasource.dart';
+import '../../features/friends/data/repositories/friends_repository_impl.dart';
+import '../../features/friends/domain/repositories/friends_repository.dart';
+import '../../features/friends/domain/usecases/friends_usecases.dart';
+import '../../features/friends/presentation/bloc/friends_bloc.dart';
 
 /// Service locator pour l'injection de dépendances
 final getIt = GetIt.instance;
@@ -216,6 +221,66 @@ Future<void> setupServiceLocator() async {
     () => ProgressBloc(
       getMediaProgressUseCase: getIt<GetMediaProgressUseCase>(),
       updateProgressUseCase: getIt<UpdateProgressUseCase>(),
+    ),
+  );
+
+  // ===== FRIENDS FEATURE =====
+  // Data Sources
+  getIt.registerSingleton<FriendsRemoteDataSource>(
+    FriendsRemoteDataSourceImpl(
+      firestore: FirebaseFirestore.instance,
+      auth: FirebaseAuth.instance,
+    ),
+  );
+
+  // Repositories
+  getIt.registerSingleton<FriendsRepository>(
+    FriendsRepositoryImpl(
+      remoteDataSource: getIt<FriendsRemoteDataSource>(),
+    ),
+  );
+
+  // Use Cases
+  getIt.registerSingleton<SearchUsersUseCase>(
+    SearchUsersUseCase(getIt<FriendsRepository>()),
+  );
+  getIt.registerSingleton<GetFriendsUseCase>(
+    GetFriendsUseCase(getIt<FriendsRepository>()),
+  );
+  getIt.registerSingleton<GetReceivedFriendRequestsUseCase>(
+    GetReceivedFriendRequestsUseCase(getIt<FriendsRepository>()),
+  );
+  getIt.registerSingleton<GetSentFriendRequestsUseCase>(
+    GetSentFriendRequestsUseCase(getIt<FriendsRepository>()),
+  );
+  getIt.registerSingleton<SendFriendRequestUseCase>(
+    SendFriendRequestUseCase(getIt<FriendsRepository>()),
+  );
+  getIt.registerSingleton<CancelFriendRequestUseCase>(
+    CancelFriendRequestUseCase(getIt<FriendsRepository>()),
+  );
+  getIt.registerSingleton<AcceptFriendRequestUseCase>(
+    AcceptFriendRequestUseCase(getIt<FriendsRepository>()),
+  );
+  getIt.registerSingleton<RejectFriendRequestUseCase>(
+    RejectFriendRequestUseCase(getIt<FriendsRepository>()),
+  );
+  getIt.registerSingleton<RemoveFriendUseCase>(
+    RemoveFriendUseCase(getIt<FriendsRepository>()),
+  );
+
+  // BLoCs
+  getIt.registerFactory<FriendsBloc>(
+    () => FriendsBloc(
+      getFriends: getIt<GetFriendsUseCase>(),
+      getReceivedRequests: getIt<GetReceivedFriendRequestsUseCase>(),
+      getSentRequests: getIt<GetSentFriendRequestsUseCase>(),
+      searchUsers: getIt<SearchUsersUseCase>(),
+      sendFriendRequest: getIt<SendFriendRequestUseCase>(),
+      cancelFriendRequest: getIt<CancelFriendRequestUseCase>(),
+      acceptFriendRequest: getIt<AcceptFriendRequestUseCase>(),
+      rejectFriendRequest: getIt<RejectFriendRequestUseCase>(),
+      removeFriend: getIt<RemoveFriendUseCase>(),
     ),
   );
 }

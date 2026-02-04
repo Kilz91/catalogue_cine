@@ -9,6 +9,7 @@ import '../../features/catalog/presentation/pages/media_detail_screen.dart';
 import '../../features/profile/presentation/pages/profile_screen.dart';
 import '../../features/profile/presentation/pages/edit_profile_screen.dart';
 import '../../features/actors/presentation/pages/actor_details_screen.dart';
+import '../../features/friends/presentation/pages/friends_screen.dart';
 import 'app_routes.dart';
 import 'auth_notifier.dart';
 
@@ -84,6 +85,11 @@ GoRouter createRouter() {
           final id = int.parse(state.pathParameters['id']!);
           return ActorDetailsScreen(actorId: id);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.friends,
+        name: 'friends',
+        builder: (context, state) => const FriendsScreen(),
       ),
     ],
     errorBuilder: (context, state) {

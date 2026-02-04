@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/user.dart';
 import '../../../../core/error/exceptions.dart';
 
@@ -41,6 +42,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       await userCredential.user?.updateDisplayName(displayName);
+
+      // Créer le document utilisateur dans Firestore pour la recherche d'amis
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
+        'email': email,
+        'displayName': displayName,
+        'displayNameLower': displayName.toLowerCase(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
       return User(
         id: userCredential.user!.uid,
