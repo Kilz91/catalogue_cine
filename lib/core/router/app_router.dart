@@ -10,6 +10,7 @@ import '../../features/profile/presentation/pages/profile_screen.dart';
 import '../../features/profile/presentation/pages/edit_profile_screen.dart';
 import '../../features/actors/presentation/pages/actor_details_screen.dart';
 import '../../features/friends/presentation/pages/friends_screen.dart';
+import '../../features/feed/presentation/pages/feed_screen.dart';
 import 'app_routes.dart';
 import 'auth_notifier.dart';
 
@@ -90,6 +91,11 @@ GoRouter createRouter() {
         path: AppRoutes.friends,
         name: 'friends',
         builder: (context, state) => const FriendsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.feed,
+        name: 'feed',
+        builder: (context, state) => const FeedScreen(),
       ),
     ],
     errorBuilder: (context, state) {

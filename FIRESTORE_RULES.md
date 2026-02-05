@@ -40,41 +40,67 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
 
-      // ===== FRIENDS SUBCOLLECTION (À VENIR) =====
-      // Collection: users/{userId}/friends/{friendId}
-      match /friends/{friendId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // ===== PROGRESS SUBCOLLECTION (À VENIR) =====
+      // ===== PROGRESS SUBCOLLECTION =====
       // Collection: users/{userId}/progress/{progressId}
       match /progress/{progressId} {
         allow read, write: if isOwner(userId);
       }
     }
 
-    // ===== FEED COLLECTION (À VENIR) =====
-    // Collection publique pour les activités
-    match /feed/{activityId} {
+    // ===== FRIEND REQUESTS COLLECTION =====
+    match /friend_requests/{requestId} {
+      // Lecture: seulement si on est l'expéditeur ou le destinataire
+      allow read: if isAuthenticated() && 
+        (resource.data.senderId == request.auth.uid || 
+         resource.data.receiverId == request.auth.uid);
+      
+      // Création: seulement si on est l'expéditeur
+      allow create: if isAuthenticated() && 
+        request.resource.data.senderId == request.auth.uid;
+      
+      // Suppression: si on est l'expéditeur (annuler) ou le destinataire (refuser/accepter)
+      allow delete: if isAuthenticated() && 
+        (resource.data.senderId == request.auth.uid || 
+         resource.data.receiverId == request.auth.uid);
+    }
+
+    // ===== FRIENDSHIPS COLLECTION =====
+    match /friendships/{friendshipId} {
+      // Lecture: seulement si on est l'un des deux amis
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || 
+         resource.data.friendId == request.auth.uid);
+      
+      // Création: lors de l'acceptation d'une demande
+      allow create: if isAuthenticated();
+      
+      // Suppression: si on est l'un des deux amis
+      allow delete: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || 
+         resource.data.friendId == request.auth.uid);
+    }
+
+    // ===== ACTIVITIES COLLECTION (FEED) =====
+    match /activities/{activityId} {
       // Lecture : tous les utilisateurs authentifiés
       allow read: if isAuthenticated();
 
-      // Écriture : uniquement l'auteur de l'activité
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Création : uniquement l'auteur de l'activité
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Suppression : uniquement l'auteur
+      allow delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
     }
 
-    // ===== MESSAGES COLLECTION (À VENIR) =====
-    // Collection: messages/{messageId}
-    match /messages/{messageId} {
-      // Lecture : participants de la conversation
-      allow read: if isAuthenticated() &&
-        (request.auth.uid == resource.data.senderId ||
-         request.auth.uid == resource.data.receiverId);
+    // ===== RECOMMENDATIONS COLLECTION =====
+    match /recommendations/{recommendationId} {
+      // Lecture : tous les utilisateurs authentifiés
+      allow read: if isAuthenticated();
 
-      // Écriture : l'expéditeur
-      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.senderId == request.auth.uid;
+      // Écriture : admin seulement (géré via Firestore Admin SDK ou Cloud Functions)
+      allow write: if false;
     }
 
     // ===== DENY ALL OTHER ACCESS =====
@@ -100,27 +126,74 @@ service cloud.firestore {
 }
 ```
 
-### Subcollection `users/{userId}/catalog/{mediaId}`
+### Subcollection `users/{userId}/progress/{progressId}`
+
+```json
+{
+  "mediaId": 12345,
+  "currentSeason": 2,
+  "currentEpisode": 5,
+  "percentage": 45,
+  "dateStarted": "2026-01-29T10:00:00.000Z",
+  "dateCompleted": null,
+  "updatedAt": "2026-02-04T15:30:00.000Z"
+}
+```
+
+### Collection `friend_requests/{requestId}`
+
+```json
+{
+  "senderId": "userId1",
+  "senderName": "Alice",
+  "senderEmail": "alice@example.com",
+  "receiverId": "userId2",
+  "receiverName": "Bob",
+  "receiverEmail": "bob@example.com",
+  "status": "pending",
+  "createdAt": "2026-02-04T10:00:00.000Z"
+}
+```
+
+### Collection `friendships/{friendshipId}`
+
+```json
+{
+  "userId": "userId1",
+  "friendId": "userId2",
+  "createdAt": "2026-02-04T10:00:00.000Z"
+}
+```
+
+### Collection `activities/{activityId}` (Feed)
 
 ```json
 {
   "userId": "abc123",
+  "userName": "John Doe",
+  "userImage": "https://...",
+  "actionType": "completed",
   "mediaId": 12345,
+  "mediaTitle": "Inception",
+  "mediaPoster": "/path.jpg",
+  "timestamp": "2026-02-04T15:30:00.000Z"
+}
+```
+
+**actionType values** : `completed`, `started`, `recommended`
+
+### Collection `recommendations/{recommendationId}`
+
+```json
+{
+  "mediaId": 12345,
+  "mediaTitle": "Inception",
+  "mediaPoster": "/path.jpg",
   "mediaType": "movie",
-  "status": "watching",
-  "media": {
-    "id": 12345,
-    "title": "Inception",
-    "type": "movie",
-    "posterPath": "/path.jpg",
-    "overview": "...",
-    "releaseDate": "2010-07-16",
-    "genres": ["Action", "Sci-Fi"],
-    "voteAverage": 8.8
-  },
-  "dateAdded": "2026-01-29T10:00:00.000Z",
-  "dateStarted": "2026-01-29T10:00:00.000Z",
-  "dateCompleted": null
+  "description": "Un chef-d'œuvre de science-fiction...",
+  "genres": ["Action", "Sci-Fi", "Thriller"],
+  "rating": 8.8,
+  "reason": "Très bien noté par les utilisateurs"
 }
 ```
 

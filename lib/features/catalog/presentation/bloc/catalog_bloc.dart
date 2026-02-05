@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../feed/domain/usecases/log_activity_usecase.dart';
 import '../../domain/usecases/catalog_usecases.dart';
 import 'catalog_event.dart';
 import 'catalog_state.dart';
@@ -9,6 +10,7 @@ class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
   final AddToCatalogUseCase addToCatalogUseCase;
   final UpdateCatalogStatusUseCase updateCatalogStatusUseCase;
   final RemoveFromCatalogUseCase removeFromCatalogUseCase;
+  final LogActivityUseCase logActivityUseCase;
 
   CatalogBloc({
     required this.searchMediaUseCase,
@@ -16,6 +18,7 @@ class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
     required this.addToCatalogUseCase,
     required this.updateCatalogStatusUseCase,
     required this.removeFromCatalogUseCase,
+    required this.logActivityUseCase,
   }) : super(const CatalogState()) {
     on<LoadCatalogEvent>(_onLoadCatalog);
     on<SearchMediaEvent>(_onSearchMedia);
@@ -67,6 +70,27 @@ class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
     emit(state.copyWith(isLoading: true, error: null));
     try {
       await addToCatalogUseCase(media: event.media, status: event.status);
+      // Logger l'activité selon le statut
+      final actionType = event.status == 'watching' 
+          ? 'started' 
+          : event.status == 'planned' 
+              ? 'planned' 
+              : null;
+
+      if (actionType != null) {
+        // Construire l'URL complète du poster
+        final posterUrl = event.media.posterPath != null && event.media.posterPath!.isNotEmpty
+            ? 'https://image.tmdb.org/t/p/w500${event.media.posterPath}'
+            : '';
+
+        await logActivityUseCase.call(
+          actionType: actionType,
+          mediaId: event.media.id.toString(),
+          mediaTitle: event.media.title,
+          mediaPoster: posterUrl,
+        );
+      }
+      
       final catalog = await getUserCatalogUseCase(status: state.statusFilter);
       emit(state.copyWith(isLoading: false, catalog: catalog));
     } catch (e) {

@@ -17,6 +17,13 @@ class HomeScreen extends StatelessWidget {
         title: const Text('Catalogue Ciné'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              context.push(AppRoutes.feed);
+            },
+            tooltip: 'Fil d\'actualité',
+          ),
+          IconButton(
             icon: const Icon(Icons.people),
             onPressed: () {
               context.push(AppRoutes.friends);
