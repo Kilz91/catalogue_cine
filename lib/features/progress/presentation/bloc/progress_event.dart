@@ -21,6 +21,9 @@ class UpdateProgressEvent extends ProgressEvent {
   final double percentage;
   final DateTime? startDate;
   final DateTime? endDate;
+  final String? mediaTitle;
+  final String? mediaPoster;
+  final bool shouldLogActivity; // true = validation explicite, false = mise à jour slider
 
   UpdateProgressEvent({
     required this.mediaId,
@@ -31,5 +34,8 @@ class UpdateProgressEvent extends ProgressEvent {
     required this.percentage,
     this.startDate,
     this.endDate,
+    this.mediaTitle,
+    this.mediaPoster,
+    this.shouldLogActivity = false,
   });
 }

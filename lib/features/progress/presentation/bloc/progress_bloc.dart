@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/progress_entity.dart';
 import '../../domain/usecases/get_media_progress_usecase.dart';
 import '../../domain/usecases/update_progress_usecase.dart';
+import '../../../feed/domain/usecases/log_activity_usecase.dart';
 
 part 'progress_event.dart';
 part 'progress_state.dart';
@@ -9,10 +10,12 @@ part 'progress_state.dart';
 class ProgressBloc extends Bloc<ProgressEvent, ProgressState> {
   final GetMediaProgressUseCase getMediaProgressUseCase;
   final UpdateProgressUseCase updateProgressUseCase;
+  final LogActivityUseCase logActivityUseCase;
 
   ProgressBloc({
     required this.getMediaProgressUseCase,
     required this.updateProgressUseCase,
+    required this.logActivityUseCase,
   }) : super(const ProgressState()) {
     on<LoadProgressEvent>(_onLoadProgress);
     on<UpdateProgressEvent>(_onUpdateProgress);
@@ -93,8 +96,8 @@ class ProgressBloc extends Bloc<ProgressEvent, ProgressState> {
           ),
         );
         
-        loadResult.fold(
-          (failure) {
+        await loadResult.fold(
+          (failure) async {
             emit(
               state.copyWith(
                 isLoading: false,
@@ -102,7 +105,18 @@ class ProgressBloc extends Bloc<ProgressEvent, ProgressState> {
               ),
             );
           },
-          (progress) {
+          (progress) async {
+            // Si terminé (100%) ET validation explicite, enregistrer l'activité
+            if (progress.percentage >= 100.0 && event.shouldLogActivity) {
+              print('✅ Média terminé - Enregistrement de l\'activité');
+              await logActivityUseCase.call(
+                actionType: 'completed',
+                mediaId: event.mediaId.toString(),
+                mediaTitle: event.mediaTitle ?? 'Média',
+                mediaPoster: event.mediaPoster ?? '',
+              );
+            }
+            
             emit(
               state.copyWith(
                 isLoading: false,

@@ -134,6 +134,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
                       mediaType: media.type,
                       totalEpisodes: media.numberOfEpisodes ?? 1,
                       totalSeasons: media.numberOfSeasons ?? 1,
+                      mediaTitle: media.title,
+                      mediaPoster: media.posterPath != null
+                          ? 'https://image.tmdb.org/t/p/w500${media.posterPath}'
+                          : '',
                     ),
                     const SizedBox(height: 24),
                     if (media.genres.isNotEmpty) ...[

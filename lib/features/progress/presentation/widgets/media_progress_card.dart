@@ -14,6 +14,8 @@ class MediaProgressCard extends StatefulWidget {
   final int totalEpisodes;
   final int totalSeasons;
   final int? episodeDurationMinutes;
+  final String? mediaTitle;
+  final String? mediaPoster;
 
   const MediaProgressCard({
     super.key,
@@ -22,6 +24,8 @@ class MediaProgressCard extends StatefulWidget {
     required this.totalEpisodes,
     this.totalSeasons = 1,
     this.episodeDurationMinutes,
+    this.mediaTitle,
+    this.mediaPoster,
   });
 
   @override
@@ -176,6 +180,8 @@ class _MediaProgressCardState extends State<MediaProgressCard> {
                                     percentage: 0.0,
                                     startDate: selectedDate,
                                     endDate: null,
+                                    mediaTitle: widget.mediaTitle,
+                                    mediaPoster: widget.mediaPoster,
                                   ),
                                 );
                                 // Activer le mode édition automatiquement
@@ -203,6 +209,7 @@ class _MediaProgressCardState extends State<MediaProgressCard> {
                                 _applyQuickUpdate(
                                   progress: state.progress!,
                                   endDate: _endDate,
+                                  shouldLogActivity: true, // Logger l'activité lors de la validation
                                 );
 
                                 // Changer le statut en "completed" si date de fin définie
@@ -427,6 +434,7 @@ class _MediaProgressCardState extends State<MediaProgressCard> {
     double? percentage,
     DateTime? startDate,
     DateTime? endDate,
+    bool shouldLogActivity = false, // true lors de la validation explicite
   }) {
     final maxSeasons = widget.totalSeasons <= 0 ? 1 : widget.totalSeasons;
     final maxEpisodes = widget.totalEpisodes <= 0 ? 1 : widget.totalEpisodes;
@@ -460,6 +468,9 @@ class _MediaProgressCardState extends State<MediaProgressCard> {
         percentage: newPercentage,
         startDate: finalStartDate,
         endDate: finalEndDate,
+        mediaTitle: widget.mediaTitle,
+        mediaPoster: widget.mediaPoster,
+        shouldLogActivity: shouldLogActivity, // Logger uniquement si demandé
       ),
     );
   }

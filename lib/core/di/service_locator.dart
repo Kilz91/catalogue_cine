@@ -34,6 +34,13 @@ import '../../features/friends/data/repositories/friends_repository_impl.dart';
 import '../../features/friends/domain/repositories/friends_repository.dart';
 import '../../features/friends/domain/usecases/friends_usecases.dart';
 import '../../features/friends/presentation/bloc/friends_bloc.dart';
+import '../../features/feed/data/datasources/feed_remote_datasource.dart';
+import '../../features/feed/data/repositories/feed_repository_impl.dart';
+import '../../features/feed/domain/repositories/feed_repository.dart';
+import '../../features/feed/domain/usecases/get_feed_activities_usecase.dart';
+import '../../features/feed/domain/usecases/get_recommendations_usecase.dart';
+import '../../features/feed/domain/usecases/log_activity_usecase.dart';
+import '../../features/feed/presentation/bloc/feed_bloc.dart';
 
 /// Service locator pour l'injection de dépendances
 final getIt = GetIt.instance;
@@ -158,6 +165,7 @@ Future<void> setupServiceLocator() async {
       addToCatalogUseCase: getIt<AddToCatalogUseCase>(),
       updateCatalogStatusUseCase: getIt<UpdateCatalogStatusUseCase>(),
       removeFromCatalogUseCase: getIt<RemoveFromCatalogUseCase>(),
+      logActivityUseCase: getIt<LogActivityUseCase>(),
     ),
   );
 
@@ -221,6 +229,7 @@ Future<void> setupServiceLocator() async {
     () => ProgressBloc(
       getMediaProgressUseCase: getIt<GetMediaProgressUseCase>(),
       updateProgressUseCase: getIt<UpdateProgressUseCase>(),
+      logActivityUseCase: getIt<LogActivityUseCase>(),
     ),
   );
 
@@ -281,6 +290,39 @@ Future<void> setupServiceLocator() async {
       acceptFriendRequest: getIt<AcceptFriendRequestUseCase>(),
       rejectFriendRequest: getIt<RejectFriendRequestUseCase>(),
       removeFriend: getIt<RemoveFriendUseCase>(),
+    ),
+  );
+
+  // ===== FEED FEATURE =====
+  // Data Sources
+  getIt.registerSingleton<FeedRemoteDataSource>(
+    FeedRemoteDataSourceImpl(
+      firestore: FirebaseFirestore.instance,
+      auth: FirebaseAuth.instance,
+    ),
+  );
+
+  // Repositories
+  getIt.registerSingleton<FeedRepository>(
+    FeedRepositoryImpl(remoteDataSource: getIt<FeedRemoteDataSource>()),
+  );
+
+  // Use Cases
+  getIt.registerSingleton<GetFeedActivitiesUseCase>(
+    GetFeedActivitiesUseCase(getIt<FeedRepository>()),
+  );
+  getIt.registerSingleton<GetRecommendationsUseCase>(
+    GetRecommendationsUseCase(getIt<FeedRepository>()),
+  );
+  getIt.registerSingleton<LogActivityUseCase>(
+    LogActivityUseCase(getIt<FeedRepository>()),
+  );
+
+  // BLoCs
+  getIt.registerFactory<FeedBloc>(
+    () => FeedBloc(
+      getFeedActivities: getIt<GetFeedActivitiesUseCase>(),
+      getRecommendations: getIt<GetRecommendationsUseCase>(),
     ),
   );
 }
