@@ -103,6 +103,37 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ===== CONVERSATIONS COLLECTION =====
+    match /conversations/{conversationId} {
+      // Lecture : seulement si on est participant
+      allow read: if isAuthenticated() && 
+        request.auth.uid in resource.data.participantIds;
+      
+      // Création : seulement si on est dans les participants
+      allow create: if isAuthenticated() && 
+        request.auth.uid in request.resource.data.participantIds;
+      
+      // Mise à jour/Suppression : seulement si on est participant
+      allow update, delete: if isAuthenticated() && 
+        request.auth.uid in resource.data.participantIds;
+    }
+
+    // ===== MESSAGES COLLECTION =====
+    match /messages/{messageId} {
+      // Lecture : seulement si on est dans la conversation
+      allow read: if isAuthenticated() && 
+        request.auth.uid in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participantIds;
+      
+      // Création : seulement si on est l'expéditeur et dans la conversation
+      allow create: if isAuthenticated() && 
+        request.resource.data.senderId == request.auth.uid &&
+        request.auth.uid in get(/databases/$(database)/documents/conversations/$(request.resource.data.conversationId)).data.participantIds;
+      
+      // Mise à jour : seulement pour marquer comme lu
+      allow update: if isAuthenticated() && 
+        request.auth.uid in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participantIds;
+    }
+
     // ===== DENY ALL OTHER ACCESS =====
     match /{document=**} {
       allow read, write: if false;
@@ -194,6 +225,43 @@ service cloud.firestore {
   "genres": ["Action", "Sci-Fi", "Thriller"],
   "rating": 8.8,
   "reason": "Très bien noté par les utilisateurs"
+}
+```
+
+### Collection `conversations/{conversationId}` (Chat)
+
+```json
+{
+  "participantIds": ["userId1", "userId2"],
+  "participantNames": {
+    "userId1": "Alice",
+    "userId2": "Bob"
+  },
+  "participantImages": {
+    "userId1": "https://...",
+    "userId2": "https://..."
+  },
+  "lastMessage": "Salut, ça va ?",
+  "lastMessageTime": "2026-02-04T15:30:00.000Z",
+  "lastMessageSenderId": "userId1",
+  "unreadCount": {
+    "userId1": 0,
+    "userId2": 3
+  }
+}
+```
+
+### Collection `messages/{messageId}` (Chat)
+
+```json
+{
+  "conversationId": "convId",
+  "senderId": "userId1",
+  "senderName": "Alice",
+  "senderImage": "https://...",
+  "content": "Salut, ça va ?",
+  "timestamp": "2026-02-04T15:30:00.000Z",
+  "isRead": false
 }
 ```
 

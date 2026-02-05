@@ -5,11 +5,13 @@ import '../../domain/entities/friendship_entity.dart';
 class FriendCard extends StatelessWidget {
   final FriendshipEntity friendship;
   final VoidCallback onRemove;
+  final VoidCallback onMessage;
 
   const FriendCard({
     super.key,
     required this.friendship,
     required this.onRemove,
+    required this.onMessage,
   });
 
   @override
@@ -26,8 +28,16 @@ class FriendCard extends StatelessWidget {
         ),
         title: Text(friendship.friendName),
         subtitle: Text(friendship.friendEmail),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.red),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.chat_bubble_outline),
+              onPressed: onMessage,
+              tooltip: 'Envoyer un message',
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
           onPressed: () {
             // Confirmation avant suppression
             showDialog(
@@ -55,6 +65,8 @@ class FriendCard extends StatelessWidget {
             );
           },
           tooltip: 'Supprimer',
+            ),
+          ],
         ),
       ),
     );

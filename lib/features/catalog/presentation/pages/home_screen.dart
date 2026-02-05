@@ -24,6 +24,13 @@ class HomeScreen extends StatelessWidget {
             tooltip: 'Fil d\'actualité',
           ),
           IconButton(
+            icon: const Icon(Icons.chat_bubble_outline),
+            onPressed: () {
+              context.push(AppRoutes.chat);
+            },
+            tooltip: 'Messages',
+          ),
+          IconButton(
             icon: const Icon(Icons.people),
             onPressed: () {
               context.push(AppRoutes.friends);

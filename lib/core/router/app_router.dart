@@ -11,6 +11,8 @@ import '../../features/profile/presentation/pages/edit_profile_screen.dart';
 import '../../features/actors/presentation/pages/actor_details_screen.dart';
 import '../../features/friends/presentation/pages/friends_screen.dart';
 import '../../features/feed/presentation/pages/feed_screen.dart';
+import '../../features/chat/presentation/pages/conversations_screen.dart';
+import '../../features/chat/presentation/pages/chat_screen.dart';
 import 'app_routes.dart';
 import 'auth_notifier.dart';
 
@@ -96,6 +98,19 @@ GoRouter createRouter() {
         path: AppRoutes.feed,
         name: 'feed',
         builder: (context, state) => const FeedScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.chat,
+        name: 'chat',
+        builder: (context, state) => const ConversationsScreen(),
+      ),
+      GoRoute(
+        path: '${AppRoutes.chat}/:conversationId',
+        name: 'chatConversation',
+        builder: (context, state) {
+          final conversationId = state.pathParameters['conversationId']!;
+          return ChatScreen(conversationId: conversationId);
+        },
       ),
     ],
     errorBuilder: (context, state) {
