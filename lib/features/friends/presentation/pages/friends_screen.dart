@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/router/app_routes.dart';
+import '../../../chat/domain/usecases/get_or_create_conversation_usecase.dart';
 import '../bloc/friends_bloc.dart';
 import '../bloc/friends_event.dart';
 import '../bloc/friends_state.dart';
@@ -127,6 +130,9 @@ class _FriendsScreenState extends State<FriendsScreen>
             friendship: friendship,
             onRemove: () {
               _bloc.add(RemoveFriendEvent(friendship.id));
+            },
+            onMessage: () async {
+              _startConversation(friendship.friendId, friendship.friendName);
             },
           );
         },
@@ -285,5 +291,43 @@ class _FriendsScreenState extends State<FriendsScreen>
         },
       ),
     );
+  }
+
+  Future<void> _startConversation(String friendId, String friendName) async {
+    // Afficher un loader pendant la création de la conversation
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Créer ou récupérer la conversation
+      final getOrCreateConversation = getIt<GetOrCreateConversationUseCase>();
+      final conversationId = await getOrCreateConversation.call(friendId);
+
+      if (mounted) {
+        // Fermer le loader
+        Navigator.pop(context);
+
+        // Naviguer vers le chat
+        context.push('${AppRoutes.chat}/$conversationId');
+      }
+    } catch (e) {
+      if (mounted) {
+        // Fermer le loader
+        Navigator.pop(context);
+
+        // Afficher l'erreur
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
