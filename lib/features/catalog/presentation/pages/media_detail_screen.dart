@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/error/exceptions.dart';
 import '../../domain/entities/media.dart';
 import '../../domain/usecases/catalog_usecases.dart';
 import '../../../actors/presentation/bloc/actor_bloc.dart';
@@ -13,11 +15,13 @@ import '../../../progress/presentation/widgets/media_progress_card.dart';
 class MediaDetailScreen extends StatefulWidget {
   final int mediaId;
   final Media? media;
+  final String? mediaType;
 
   const MediaDetailScreen({
     super.key,
     required this.mediaId,
     this.media,
+    this.mediaType,
   });
 
   @override
@@ -27,6 +31,7 @@ class MediaDetailScreen extends StatefulWidget {
 class _MediaDetailScreenState extends State<MediaDetailScreen> {
   Media? _loadedMedia;
   bool _isLoading = false;
+  String? _loadErrorMessage;
 
   @override
   void initState() {
@@ -46,13 +51,16 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
 
   Future<void> _loadMediaDetails() async {
     if (_isLoading) return;
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadErrorMessage = null;
+    });
 
     try {
       final useCase = getIt<GetMediaDetailsUseCase>();
       final detailedMedia = await useCase(
         mediaId: widget.mediaId,
-        type: _loadedMedia?.type ?? 'movie', // Fallback si type inconnu
+        type: _loadedMedia?.type ?? widget.mediaType ?? 'movie', // Fallback si type inconnu
       );
       if (mounted) {
         setState(() {
@@ -61,16 +69,84 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (!mounted) return;
+
+      final mediaType = _loadedMedia?.type ?? widget.mediaType ?? 'movie';
+      final shouldRedirectToNotFound =
+          _loadedMedia == null && _isMediaNotFoundError(e);
+
+      if (shouldRedirectToNotFound) {
         setState(() => _isLoading = false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          context.goNamed(
+            'mediaNotFound',
+            pathParameters: {
+              'id': '${widget.mediaId}',
+              'type': mediaType,
+            },
+          );
+        });
+        return;
       }
+
+      setState(() {
+        _isLoading = false;
+        if (_loadedMedia == null) {
+          _loadErrorMessage =
+              'Impossible de charger les détails du média. Réessayez.';
+        }
+      });
     }
+  }
+
+  bool _isMediaNotFoundError(Object error) {
+    if (error is NotFoundException) return true;
+    if (error is ApiException && error.statusCode == 404) return true;
+    final message = error.toString().toLowerCase();
+    return message.contains('introuvable') || message.contains('not found');
   }
 
   @override
   Widget build(BuildContext context) {
     // Afficher un écran de chargement si aucun média n'est disponible
     if (_loadedMedia == null) {
+      if (_isLoading) {
+        return Scaffold(
+          appBar: AppBar(title: const Text('Détails')),
+          body: const Center(child: CircularProgressIndicator()),
+        );
+      }
+
+      if (_loadErrorMessage != null) {
+        return Scaffold(
+          appBar: AppBar(title: const Text('Détails')),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 56, color: Colors.orange),
+                  const SizedBox(height: 16),
+                  Text(
+                    _loadErrorMessage!,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _loadMediaDetails,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Réessayer'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
       return Scaffold(
         appBar: AppBar(title: const Text('Détails')),
         body: const Center(child: CircularProgressIndicator()),

@@ -4,7 +4,6 @@ import 'package:catalogue_cine/features/auth/presentation/bloc/auth_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/router/app_routes.dart';
 
 /// Écran d'accueil principal
 class HomeScreen extends StatelessWidget {
@@ -19,34 +18,34 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.notifications),
             onPressed: () {
-              context.push(AppRoutes.feed);
+              context.pushNamed('feed');
             },
             tooltip: 'Fil d\'actualité',
           ),
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline),
             onPressed: () {
-              context.push(AppRoutes.chat);
+              context.pushNamed('chat');
             },
             tooltip: 'Messages',
           ),
           IconButton(
             icon: const Icon(Icons.people),
             onPressed: () {
-              context.push(AppRoutes.friends);
+              context.pushNamed('friends');
             },
             tooltip: 'Amis',
           ),
           IconButton(
             icon: const Icon(Icons.movie_filter),
             onPressed: () {
-              context.push(AppRoutes.catalog);
+              context.pushNamed('catalog');
             },
           ),
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () {
-              context.push(AppRoutes.profile);
+              context.pushNamed('profile');
             },
           ),
           IconButton(
@@ -63,7 +62,7 @@ class HomeScreen extends StatelessWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Vous avez été déconnecté')),
             );
-            context.go(AppRoutes.login);
+            context.goNamed('login');
           }
         },
         builder: (context, state) {

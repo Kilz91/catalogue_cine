@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/api_constants.dart';
-import '../../../../core/router/app_routes.dart';
 import '../../domain/entities/actor.dart';
 
 /// Liste horizontale affichant le cast d'un média
@@ -55,7 +54,10 @@ class _CastCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        context.push('${AppRoutes.actorDetails}/${actor.id}');
+        context.pushNamed(
+          'actorDetails',
+          pathParameters: {'id': '${actor.id}'},
+        );
       },
       child: Container(
         width: 120,

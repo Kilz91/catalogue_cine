@@ -10,6 +10,7 @@ abstract class FeedRepository {
   Future<Either<Failure, void>> logActivity({
     required String actionType,
     required String mediaId,
+    required String mediaType,
     required String mediaTitle,
     required String mediaPoster,
   });

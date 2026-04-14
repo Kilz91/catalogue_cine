@@ -86,6 +86,7 @@ class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
         await logActivityUseCase.call(
           actionType: actionType,
           mediaId: event.media.id.toString(),
+          mediaType: event.media.type,
           mediaTitle: event.media.title,
           mediaPoster: posterUrl,
         );

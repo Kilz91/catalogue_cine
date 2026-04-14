@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/error/exceptions.dart';
 import '../models/activity_model.dart';
 import '../models/recommendation_model.dart';
@@ -11,6 +12,7 @@ abstract class FeedRemoteDataSource {
   Future<void> logActivity({
     required String actionType,
     required String mediaId,
+    required String mediaType,
     required String mediaTitle,
     required String mediaPoster,
   });
@@ -60,7 +62,7 @@ class FeedRemoteDataSourceImpl implements FeedRemoteDataSource {
           .map((doc) => ActivityModel.fromFirestore(doc))
           .toList();
     } catch (e) {
-      print('❌ FEED ERROR: $e');
+      debugPrint('❌ FEED ERROR: $e');
       throw ServerException(e.toString());
     }
   }
@@ -79,7 +81,7 @@ class FeedRemoteDataSourceImpl implements FeedRemoteDataSource {
           .map((doc) => RecommendationModel.fromFirestore(doc))
           .toList();
     } catch (e) {
-      print('❌ RECOMMENDATIONS ERROR: $e');
+      debugPrint('❌ RECOMMENDATIONS ERROR: $e');
       throw ServerException(e.toString());
     }
   }
@@ -88,6 +90,7 @@ class FeedRemoteDataSourceImpl implements FeedRemoteDataSource {
   Future<void> logActivity({
     required String actionType,
     required String mediaId,
+    required String mediaType,
     required String mediaTitle,
     required String mediaPoster,
   }) async {
@@ -95,28 +98,21 @@ class FeedRemoteDataSourceImpl implements FeedRemoteDataSource {
       final currentUser = auth.currentUser;
       if (currentUser == null) throw ServerException('Non authentifié');
 
-      // Récupérer les infos de l'utilisateur
-      final userDoc = await firestore
-          .collection('users')
-          .doc(_currentUserId)
-          .get();
-
-      final userData = userDoc.data() ?? {};
-
       await firestore.collection('activities').add({
         'userId': _currentUserId,
         'userName': currentUser.displayName ?? 'Utilisateur',
         'userImage': currentUser.photoURL ?? '',
         'actionType': actionType,
         'mediaId': mediaId,
+        'mediaType': mediaType,
         'mediaTitle': mediaTitle,
         'mediaPoster': mediaPoster,
         'timestamp': Timestamp.now(),
       });
 
-      print('✅ ACTIVITY LOGGED: $actionType on $mediaTitle');
+      debugPrint('✅ ACTIVITY LOGGED: $actionType on $mediaTitle');
     } catch (e) {
-      print('❌ LOG ACTIVITY ERROR: $e');
+      debugPrint('❌ LOG ACTIVITY ERROR: $e');
       throw ServerException(e.toString());
     }
   }

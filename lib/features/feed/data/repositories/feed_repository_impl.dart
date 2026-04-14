@@ -36,6 +36,7 @@ class FeedRepositoryImpl implements FeedRepository {
   Future<Either<Failure, void>> logActivity({
     required String actionType,
     required String mediaId,
+    required String mediaType,
     required String mediaTitle,
     required String mediaPoster,
   }) async {
@@ -43,6 +44,7 @@ class FeedRepositoryImpl implements FeedRepository {
       await remoteDataSource.logActivity(
         actionType: actionType,
         mediaId: mediaId,
+        mediaType: mediaType,
         mediaTitle: mediaTitle,
         mediaPoster: mediaPoster,
       );

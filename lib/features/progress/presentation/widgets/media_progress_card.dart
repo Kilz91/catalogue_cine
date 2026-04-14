@@ -317,7 +317,7 @@ class _MediaProgressCardState extends State<MediaProgressCard> {
               ),
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: _selectedSeason,
+                  initialValue: _selectedSeason,
                   decoration: const InputDecoration(
                     labelText: 'Saison',
                     border: OutlineInputBorder(),
@@ -344,7 +344,7 @@ class _MediaProgressCardState extends State<MediaProgressCard> {
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: _selectedEpisode,
+                  initialValue: _selectedEpisode,
                   decoration: const InputDecoration(
                     labelText: 'Épisode',
                     border: OutlineInputBorder(),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/di/service_locator.dart';
-import '../../../../core/router/app_routes.dart';
 import '../bloc/chat_bloc.dart';
 import '../widgets/conversation_card.dart';
 
@@ -80,7 +79,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                 return ConversationCard(
                   conversation: conversation,
                   onTap: () {
-                    context.push('${AppRoutes.chat}/${conversation.id}');
+                    context.pushNamed(
+                      'chatConversation',
+                      pathParameters: {'conversationId': conversation.id},
+                    );
                   },
                 );
               },

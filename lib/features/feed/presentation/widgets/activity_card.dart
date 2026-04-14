@@ -14,9 +14,6 @@ class ActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Debug: afficher l'URL du poster
-    print('📸 Activity mediaPoster: "${activity.mediaPoster}"');
-    
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
@@ -59,8 +56,10 @@ class ActivityCard extends StatelessWidget {
                   width: 40,
                   height: 60,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) {
-                    print('❌ Erreur chargement image: ${activity.mediaPoster}');
+                  errorBuilder: (context, error, stackTrace) {
+                    debugPrint(
+                      '❌ Erreur chargement image: ${activity.mediaPoster}',
+                    );
                     return const Icon(Icons.image_not_supported);
                   },
                 ),

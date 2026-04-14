@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/router/app_routes.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 
@@ -89,7 +88,7 @@ class _LoginFormState extends State<LoginForm> {
           const SizedBox(height: 16),
           TextButton(
             onPressed: () {
-              context.go(AppRoutes.signUp);
+              context.goNamed('signup');
             },
             child: const Text('Créer un compte'),
           ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/friends_usecases.dart';
 import 'friends_event.dart';
@@ -50,7 +51,7 @@ class FriendsBloc extends Bloc<FriendsEvent, FriendsState> {
 
     friendsResult.fold(
       (failure) {
-        print('❌ ERREUR FRIENDS: ${failure.message}');
+        debugPrint('❌ ERREUR FRIENDS: ${failure.message}');
         emit(state.copyWith(
           isLoading: false,
           errorMessage: failure.message,
@@ -59,7 +60,7 @@ class FriendsBloc extends Bloc<FriendsEvent, FriendsState> {
       (friends) {
         receivedResult.fold(
           (failure) {
-            print('❌ ERREUR RECEIVED REQUESTS: ${failure.message}');
+            debugPrint('❌ ERREUR RECEIVED REQUESTS: ${failure.message}');
             emit(state.copyWith(
               isLoading: false,
               errorMessage: failure.message,
@@ -68,7 +69,7 @@ class FriendsBloc extends Bloc<FriendsEvent, FriendsState> {
           (received) {
             sentResult.fold(
               (failure) {
-                print('❌ ERREUR SENT REQUESTS: ${failure.message}');
+                debugPrint('❌ ERREUR SENT REQUESTS: ${failure.message}');
                 emit(state.copyWith(
                   isLoading: false,
                   errorMessage: failure.message,
@@ -92,25 +93,27 @@ class FriendsBloc extends Bloc<FriendsEvent, FriendsState> {
     Emitter<FriendsState> emit,
   ) async {
     if (event.query.isEmpty) {
-      print('🔍 SEARCH: Query vide');
+      debugPrint('🔍 SEARCH: Query vide');
       emit(state.copyWith(searchResults: []));
       return;
     }
 
-    print('🔍 SEARCH: Recherche pour "${event.query}"');
+    debugPrint('🔍 SEARCH: Recherche pour "${event.query}"');
     final result = await searchUsers(event.query);
 
     result.fold(
       (failure) {
-        print('❌ ERREUR SEARCH: ${failure.message}');
+        debugPrint('❌ ERREUR SEARCH: ${failure.message}');
         emit(state.copyWith(
           searchResults: [],
           errorMessage: failure.message,
         ));
       },
       (results) {
-        print('✅ SEARCH: ${results.length} résultats trouvés');
-        results.forEach((user) => print('   - ${user.displayName} (${user.userId})'));
+        debugPrint('✅ SEARCH: ${results.length} résultats trouvés');
+        for (final user in results) {
+          debugPrint('   - ${user.displayName} (${user.userId})');
+        }
         emit(state.copyWith(
           searchResults: results,
         ));

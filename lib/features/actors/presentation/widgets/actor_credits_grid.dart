@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/api_constants.dart';
-import '../../../../core/router/app_routes.dart';
 import '../../../catalog/domain/entities/media.dart';
 
 /// Grille affichant la filmographie d'un acteur
@@ -56,8 +55,9 @@ class _MediaCreditCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        context.push(
-          '${AppRoutes.mediaDetail}/${media.id}',
+        context.pushNamed(
+          'mediaDetail',
+          pathParameters: {'id': '${media.id}'},
           extra: {'media': media},
         );
       },

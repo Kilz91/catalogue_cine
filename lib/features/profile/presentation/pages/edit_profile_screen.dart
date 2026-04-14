@@ -135,7 +135,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       child: ElevatedButton(
                         onPressed: isUpdating
                             ? null
-                            : () => _saveProfile(context),
+                            : _saveProfile,
                         child: isUpdating
                             ? const SizedBox(
                                 height: 20,
@@ -157,19 +157,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Future<void> _saveProfile(BuildContext context) async {
+  Future<void> _saveProfile() async {
     if (_formKey.currentState!.validate()) {
       await context.read<ProfileCubit>().updateProfile(
         displayName: _displayNameController.text.trim(),
         bio: _bioController.text.trim(),
       );
 
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Profil mis à jour')));
-        context.pop();
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profil mis à jour')));
+      context.pop();
     }
   }
 }

@@ -85,7 +85,7 @@ c:\Users\Kilian\Documents\Coding\catalogue_cine
 │
 ├── pubspec.yaml                    ← Dépendances
 ├── analysis_options.yaml           ← Lint config
-└── android/, ios/, web/, etc.      ← Plateformes natives
+└── android/, ios/                  ← Plateformes natives mobiles
 ```
 
 ---

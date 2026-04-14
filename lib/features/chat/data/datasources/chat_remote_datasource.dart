@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/error/exceptions.dart';
 import '../models/chat_conversation_model.dart';
 import '../models/chat_message_model.dart';
@@ -45,7 +46,7 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
             .toList();
       });
     } catch (e) {
-      print('❌ CONVERSATIONS ERROR: $e');
+      debugPrint('❌ CONVERSATIONS ERROR: $e');
       throw ServerException(e.toString());
     }
   }
@@ -64,7 +65,7 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
             .toList();
       });
     } catch (e) {
-      print('❌ MESSAGES ERROR: $e');
+      debugPrint('❌ MESSAGES ERROR: $e');
       throw ServerException(e.toString());
     }
   }
@@ -123,9 +124,9 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
         });
       }
 
-      print('✅ MESSAGE SENT');
+      debugPrint('✅ MESSAGE SENT');
     } catch (e) {
-      print('❌ SEND MESSAGE ERROR: $e');
+      debugPrint('❌ SEND MESSAGE ERROR: $e');
       throw ServerException(e.toString());
     }
   }
@@ -179,10 +180,10 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
       final docRef =
           await firestore.collection('conversations').add(conversation.toJson());
 
-      print('✅ CONVERSATION CREATED: ${docRef.id}');
+      debugPrint('✅ CONVERSATION CREATED: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      print('❌ CREATE CONVERSATION ERROR: $e');
+      debugPrint('❌ CREATE CONVERSATION ERROR: $e');
       throw ServerException(e.toString());
     }
   }
@@ -224,9 +225,9 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
       }
       await batch.commit();
 
-      print('✅ MESSAGES MARKED AS READ');
+      debugPrint('✅ MESSAGES MARKED AS READ');
     } catch (e) {
-      print('❌ MARK AS READ ERROR: $e');
+      debugPrint('❌ MARK AS READ ERROR: $e');
       throw ServerException(e.toString());
     }
   }

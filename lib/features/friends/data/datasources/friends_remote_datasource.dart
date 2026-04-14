@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/error/exceptions.dart';
 import '../models/friend_request_model.dart';
 import '../models/friendship_model.dart';
@@ -40,12 +41,12 @@ class FriendsRemoteDataSourceImpl implements FriendsRemoteDataSource {
 
       final queryLower = query.toLowerCase();
       
-      print('🔥 FIRESTORE SEARCH: recherche de "$queryLower"');
+      debugPrint('🔥 FIRESTORE SEARCH: recherche de "$queryLower"');
       
       // Récupérer tous les users et filtrer en mémoire
       final snapshot = await firestore.collection('users').get();
       
-      print('🔥 Total users: ${snapshot.docs.length}');
+      debugPrint('🔥 Total users: ${snapshot.docs.length}');
       
       final results = snapshot.docs
           .where((doc) {
@@ -58,7 +59,7 @@ class FriendsRemoteDataSourceImpl implements FriendsRemoteDataSource {
                            displayNameLower.contains(queryLower);
             
             if (matches) {
-              print('   ✅ Match trouvé: ${data['displayName']} (${doc.id})');
+              debugPrint('   ✅ Match trouvé: ${data['displayName']} (${doc.id})');
             }
             
             return matches && doc.id != _currentUserId;
@@ -66,10 +67,10 @@ class FriendsRemoteDataSourceImpl implements FriendsRemoteDataSource {
           .map((doc) => UserSearchResultModel.fromFirestore(doc))
           .toList();
       
-      print('🔥 Résultats: ${results.length} trouvés');
+      debugPrint('🔥 Résultats: ${results.length} trouvés');
       return results;
     } catch (e) {
-      print('❌ FIRESTORE ERROR: $e');
+      debugPrint('❌ FIRESTORE ERROR: $e');
       throw ServerException(e.toString());
     }
   }

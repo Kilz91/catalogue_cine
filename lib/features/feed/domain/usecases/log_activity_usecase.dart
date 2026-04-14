@@ -10,12 +10,14 @@ class LogActivityUseCase {
   Future<Either<Failure, void>> call({
     required String actionType,
     required String mediaId,
+    required String mediaType,
     required String mediaTitle,
     required String mediaPoster,
   }) {
     return repository.logActivity(
       actionType: actionType,
       mediaId: mediaId,
+      mediaType: mediaType,
       mediaTitle: mediaTitle,
       mediaPoster: mediaPoster,
     );

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/di/service_locator.dart';
-import '../../../../core/router/app_routes.dart';
 import '../../../chat/domain/usecases/get_or_create_conversation_usecase.dart';
 import '../bloc/friends_bloc.dart';
 import '../bloc/friends_event.dart';
@@ -313,7 +312,10 @@ class _FriendsScreenState extends State<FriendsScreen>
         Navigator.pop(context);
 
         // Naviguer vers le chat
-        context.push('${AppRoutes.chat}/$conversationId');
+        context.pushNamed(
+          'chatConversation',
+          pathParameters: {'conversationId': conversationId},
+        );
       }
     } catch (e) {
       if (mounted) {

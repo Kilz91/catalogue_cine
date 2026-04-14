@@ -238,7 +238,7 @@
 
 ✅ lib/firebase_options.dart
    - Firebase configuration template
-   - Web, Android, iOS, macOS
+   - Android, iOS (mobile uniquement)
 
 ✅ pubspec.yaml
    - 20+ dépendances ajoutées

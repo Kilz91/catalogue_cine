@@ -10,6 +10,8 @@ abstract class AppRoutes {
   static const String catalog = '/catalog';
   static const String mediaDetail = '/media';
   static const String mediaDetails = '/media/:id/:type';
+  static const String mediaNotFoundBase = '/media-not-found';
+  static const String mediaNotFound = '/media-not-found/:id/:type';
   static const String addToLibrary = '/add-to-library/:id/:type';
 
   // Actors Routes

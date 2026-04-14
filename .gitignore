@@ -53,3 +53,6 @@ app.*.map.json
 firebase_options.dart
 google-services.json
 GoogleService-Info.plist
+
+# Keep lockfile local-only for this mobile-only workflow
+pubspec.lock

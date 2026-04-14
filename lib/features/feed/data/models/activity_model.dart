@@ -9,6 +9,7 @@ class ActivityModel {
   final String userImage;
   final String actionType;
   final String mediaId;
+  final String mediaType;
   final String mediaTitle;
   final String mediaPoster;
   final DateTime timestamp;
@@ -20,6 +21,7 @@ class ActivityModel {
     required this.userImage,
     required this.actionType,
     required this.mediaId,
+    required this.mediaType,
     required this.mediaTitle,
     required this.mediaPoster,
     required this.timestamp,
@@ -35,6 +37,7 @@ class ActivityModel {
       userImage: data['userImage'] ?? '',
       actionType: data['actionType'] ?? 'completed',
       mediaId: data['mediaId'] ?? '',
+      mediaType: data['mediaType'] ?? 'movie',
       mediaTitle: data['mediaTitle'] ?? '',
       mediaPoster: data['mediaPoster'] ?? '',
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -49,6 +52,7 @@ class ActivityModel {
       'userImage': userImage,
       'actionType': actionType,
       'mediaId': mediaId,
+      'mediaType': mediaType,
       'mediaTitle': mediaTitle,
       'mediaPoster': mediaPoster,
       'timestamp': Timestamp.fromDate(timestamp),
@@ -64,6 +68,7 @@ class ActivityModel {
       userImage: userImage,
       actionType: actionType,
       mediaId: mediaId,
+      mediaType: mediaType,
       mediaTitle: mediaTitle,
       mediaPoster: mediaPoster,
       timestamp: timestamp,

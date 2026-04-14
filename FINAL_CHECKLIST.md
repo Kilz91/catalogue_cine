@@ -319,11 +319,9 @@
 ### ✅ FIREBASE OPTIONS
 
 - [x] `firebase_options.dart` créé
-- [x] Template pour toutes les plateformes
-- [x] Web configuration
+- [x] Template pour plateformes mobiles
 - [x] Android configuration
 - [x] iOS configuration
-- [x] macOS configuration
 
 ---
 

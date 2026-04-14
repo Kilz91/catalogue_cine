@@ -6,6 +6,7 @@ import '../../features/auth/presentation/pages/signup_screen.dart';
 import '../../features/catalog/presentation/pages/home_screen.dart';
 import '../../features/catalog/presentation/pages/catalog_screen.dart';
 import '../../features/catalog/presentation/pages/media_detail_screen.dart';
+import '../../features/catalog/presentation/pages/media_not_found_screen.dart';
 import '../../features/profile/presentation/pages/profile_screen.dart';
 import '../../features/profile/presentation/pages/edit_profile_screen.dart';
 import '../../features/actors/presentation/pages/actor_details_screen.dart';
@@ -79,6 +80,24 @@ GoRouter createRouter() {
               ? (state.extra as Map)['media']
               : null;
           return MediaDetailScreen(mediaId: id, media: media);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.mediaDetails,
+        name: 'mediaDetailWithType',
+        builder: (context, state) {
+          final id = int.parse(state.pathParameters['id']!);
+          final type = state.pathParameters['type'];
+          return MediaDetailScreen(mediaId: id, mediaType: type);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.mediaNotFound,
+        name: 'mediaNotFound',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+          final type = state.pathParameters['type'] ?? 'movie';
+          return MediaNotFoundScreen(mediaId: id, mediaType: type);
         },
       ),
       GoRoute(

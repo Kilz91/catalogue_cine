@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/chat_conversation_entity.dart';
 import '../../domain/entities/chat_message_entity.dart';
@@ -41,14 +42,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     await emit.forEach<List<ChatConversationEntity>>(
       getConversationsUseCase.call(),
       onData: (conversations) {
-        print('✅ CONVERSATIONS LOADED: ${conversations.length}');
+        debugPrint('✅ CONVERSATIONS LOADED: ${conversations.length}');
         return state.copyWith(
           conversations: conversations,
           isLoadingConversations: false,
         );
       },
       onError: (error, stackTrace) {
-        print('❌ CONVERSATIONS ERROR: $error');
+        debugPrint('❌ CONVERSATIONS ERROR: $error');
         return state.copyWith(
           isLoadingConversations: false,
           errorMessage: error.toString(),
@@ -71,14 +72,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     await emit.forEach<List<ChatMessageEntity>>(
       getMessagesUseCase.call(event.conversationId),
       onData: (messages) {
-        print('✅ MESSAGES LOADED: ${messages.length}');
+        debugPrint('✅ MESSAGES LOADED: ${messages.length}');
         return state.copyWith(
           messages: messages,
           isLoadingMessages: false,
         );
       },
       onError: (error, stackTrace) {
-        print('❌ MESSAGES ERROR: $error');
+        debugPrint('❌ MESSAGES ERROR: $error');
         return state.copyWith(
           isLoadingMessages: false,
           errorMessage: error.toString(),
@@ -106,7 +107,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         isSending: false,
         errorMessage: e.toString(),
       ));
-      print('❌ SEND MESSAGE ERROR: $e');
+      debugPrint('❌ SEND MESSAGE ERROR: $e');
     }
   }
 
@@ -117,11 +118,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     try {
       final conversationId =
           await getOrCreateConversationUseCase.call(event.friendId);
-      print('✅ CONVERSATION ID: $conversationId');
+      debugPrint('✅ CONVERSATION ID: $conversationId');
       // La navigation sera gérée dans l'UI
     } catch (e) {
       emit(state.copyWith(errorMessage: e.toString()));
-      print('❌ CREATE CONVERSATION ERROR: $e');
+      debugPrint('❌ CREATE CONVERSATION ERROR: $e');
     }
   }
 
@@ -132,7 +133,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     try {
       await markMessagesAsReadUseCase.call(event.conversationId);
     } catch (e) {
-      print('❌ MARK AS READ ERROR: $e');
+      debugPrint('❌ MARK AS READ ERROR: $e');
     }
   }
 }

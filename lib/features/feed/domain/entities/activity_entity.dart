@@ -6,6 +6,7 @@ class ActivityEntity {
   final String userImage;
   final String actionType; // 'completed', 'started', 'recommended'
   final String mediaId;
+  final String mediaType; // 'movie', 'tv', 'anime'
   final String mediaTitle;
   final String mediaPoster;
   final DateTime timestamp;
@@ -17,6 +18,7 @@ class ActivityEntity {
     required this.userImage,
     required this.actionType,
     required this.mediaId,
+    required this.mediaType,
     required this.mediaTitle,
     required this.mediaPoster,
     required this.timestamp,

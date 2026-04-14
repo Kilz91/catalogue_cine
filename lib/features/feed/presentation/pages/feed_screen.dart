@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/di/service_locator.dart';
 import '../bloc/feed_bloc.dart';
 import '../bloc/feed_event.dart';
@@ -19,6 +20,34 @@ class _FeedScreenState extends State<FeedScreen>
     with SingleTickerProviderStateMixin {
   late final FeedBloc _bloc;
   late final TabController _tabController;
+
+  void _openMediaDetail({
+    required String rawMediaId,
+    required String rawMediaType,
+  }) {
+    final mediaId = int.tryParse(rawMediaId);
+    if (mediaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impossible d\'ouvrir ce media (identifiant invalide).'),
+        ),
+      );
+      return;
+    }
+
+    const validMediaTypes = {'movie', 'tv', 'anime'};
+    final mediaType = validMediaTypes.contains(rawMediaType)
+        ? rawMediaType
+        : 'movie';
+
+    context.pushNamed(
+      'mediaDetailWithType',
+      pathParameters: {
+        'id': '$mediaId',
+        'type': mediaType,
+      },
+    );
+  }
 
   @override
   void initState() {
@@ -101,8 +130,10 @@ class _FeedScreenState extends State<FeedScreen>
           return ActivityCard(
             activity: activity,
             onTap: () {
-              // TODO: Naviguer vers la page du média
-              print('Naviguer vers ${activity.mediaId}');
+              _openMediaDetail(
+                rawMediaId: activity.mediaId,
+                rawMediaType: activity.mediaType,
+              );
             },
           );
         },
@@ -147,8 +178,10 @@ class _FeedScreenState extends State<FeedScreen>
           return RecommendationCard(
             recommendation: recommendation,
             onTap: () {
-              // TODO: Naviguer vers la page du média
-              print('Naviguer vers ${recommendation.mediaId}');
+              _openMediaDetail(
+                rawMediaId: recommendation.mediaId,
+                rawMediaType: recommendation.mediaType,
+              );
             },
           );
         },

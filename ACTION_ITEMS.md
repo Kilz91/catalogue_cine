@@ -10,13 +10,13 @@ flutterfire configure
 ```
 
 - Choisir le projet Firebase (ou en créer un)
-- Sélectionner les plateformes (Android, iOS, Web, etc)
+- Sélectionner les plateformes (Android, iOS)
 - Les fichiers seront générés automatiquement
 
 ### [ ] 1.2 Mettre à jour firebase_options.dart
 
 - Copier les clés depuis flutterfire
-- Vérifier que toutes les plateformes sont configurées
+- Vérifier que les plateformes mobiles sont configurées (Android, iOS)
 - Tester que Firebase se connecte
 
 ### [ ] 1.3 Installer les dépendances

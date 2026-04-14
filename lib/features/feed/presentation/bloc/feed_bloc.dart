@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/get_feed_activities_usecase.dart';
 import '../../domain/usecases/get_recommendations_usecase.dart';
@@ -28,14 +29,14 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
     result.fold(
       (failure) {
-        print('❌ FEED LOAD ERROR: ${failure.message}');
+        debugPrint('❌ FEED LOAD ERROR: ${failure.message}');
         emit(state.copyWith(
           isLoadingActivities: false,
           errorMessage: failure.message,
         ));
       },
       (activities) {
-        print('✅ FEED LOADED: ${activities.length} activités');
+        debugPrint('✅ FEED LOADED: ${activities.length} activités');
         emit(state.copyWith(
           isLoadingActivities: false,
           activities: activities,
@@ -54,14 +55,16 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
     result.fold(
       (failure) {
-        print('❌ RECOMMENDATIONS ERROR: ${failure.message}');
+        debugPrint('❌ RECOMMENDATIONS ERROR: ${failure.message}');
         emit(state.copyWith(
           isLoadingRecommendations: false,
           errorMessage: failure.message,
         ));
       },
       (recommendations) {
-        print('✅ RECOMMENDATIONS LOADED: ${recommendations.length} recommandations');
+        debugPrint(
+          '✅ RECOMMENDATIONS LOADED: ${recommendations.length} recommandations',
+        );
         emit(state.copyWith(
           isLoadingRecommendations: false,
           recommendations: recommendations,
