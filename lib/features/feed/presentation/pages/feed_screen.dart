@@ -29,7 +29,9 @@ class _FeedScreenState extends State<FeedScreen>
     if (mediaId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Impossible d\'ouvrir ce media (identifiant invalide).'),
+          content: Text(
+            'Impossible d\'ouvrir ce media (identifiant invalide).',
+          ),
         ),
       );
       return;
@@ -42,10 +44,7 @@ class _FeedScreenState extends State<FeedScreen>
 
     context.pushNamed(
       'mediaDetailWithType',
-      pathParameters: {
-        'id': '$mediaId',
-        'type': mediaType,
-      },
+      pathParameters: {'id': '$mediaId', 'type': mediaType},
     );
   }
 
@@ -68,63 +67,232 @@ class _FeedScreenState extends State<FeedScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0D1B2A),
       appBar: AppBar(
+        backgroundColor: const Color(0xFF0D1B2A),
+        foregroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        titleSpacing: 20,
         title: const Text('Fil d\'actualité'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.people_outline), text: 'Amis'),
-            Tab(icon: Icon(Icons.lightbulb_outline), text: 'Recommandations'),
-          ],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: () => _bloc.add(RefreshFeedEvent()),
+            tooltip: 'Actualiser le feed',
+          ),
+        ],
+      ),
+      body: _FeedBackground(
+        child: BlocBuilder<FeedBloc, FeedState>(
+          bloc: _bloc,
+          builder: (context, state) {
+            final hasError = (state.errorMessage ?? '').trim().isNotEmpty;
+            final isSyncing =
+                state.isLoadingActivities || state.isLoadingRecommendations;
+
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: _buildHeaderCard(context, state),
+                ),
+                if (isSyncing)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 10),
+                    child: LinearProgressIndicator(
+                      color: Color(0xFFAED3FF),
+                      backgroundColor: Color(0xFF1B3B58),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: _buildTabSwitcher(),
+                ),
+                if (hasError)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                    child: _buildErrorBanner(state.errorMessage!),
+                  ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildActivitiesTab(state),
+                      _buildRecommendationsTab(state),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
-      body: BlocBuilder<FeedBloc, FeedState>(
-        bloc: _bloc,
-        builder: (context, state) {
-          return TabBarView(
-            controller: _tabController,
+    );
+  }
+
+  Widget _buildHeaderCard(BuildContext context, FeedState state) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF17324A), Color(0xFF1F4E79)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.22),
+            blurRadius: 18,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              _buildActivitiesTab(state),
-              _buildRecommendationsTab(state),
+              Expanded(
+                child: Text(
+                  'Reste au coeur de l\'activite',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.dynamic_feed_outlined,
+                  color: Colors.white,
+                ),
+              ),
             ],
-          );
-        },
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Suis les actions de tes amis et decouvre des suggestions pertinentes.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withValues(alpha: 0.85),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _FeedMetricTile(
+                  label: 'Activites',
+                  value: '${state.activities.length}',
+                  icon: Icons.people_outline,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _FeedMetricTile(
+                  label: 'Reco',
+                  value: '${state.recommendations.length}',
+                  icon: Icons.lightbulb_outline,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabSwitcher() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10253A).withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        dividerColor: Colors.transparent,
+        splashBorderRadius: BorderRadius.circular(10),
+        indicator: BoxDecoration(
+          color: const Color(0xFF4A7BF7),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white.withValues(alpha: 0.74),
+        tabs: const [
+          Tab(icon: Icon(Icons.people_outline), text: 'Amis'),
+          Tab(icon: Icon(Icons.lightbulb_outline), text: 'Recommandations'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(String message) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF571C23).withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFFF8A80).withValues(alpha: 0.6),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Color(0xFFFFB4AB)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Colors.white),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: () => _bloc.add(RefreshFeedEvent()),
+            child: const Text('Reessayer'),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildActivitiesTab(FeedState state) {
     if (state.isLoadingActivities && state.activities.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const _FeedLoadingList();
     }
 
     if (state.activities.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.people_outline, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text(
-              'Aucune activité pour le moment',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => _bloc.add(RefreshFeedEvent()),
-              child: const Text('Actualiser'),
-            ),
-          ],
-        ),
+      return _FeedEmptyState(
+        icon: Icons.people_outline,
+        title: 'Aucune activite pour le moment',
+        subtitle:
+            'Ajoute des amis et interagis avec des titres pour alimenter le feed.',
+        buttonLabel: 'Actualiser',
+        onPressed: () => _bloc.add(RefreshFeedEvent()),
       );
     }
 
     return RefreshIndicator(
+      color: Colors.white,
       onRefresh: () async {
         _bloc.add(RefreshFeedEvent());
       },
-      child: ListView.builder(
+      child: ListView.separated(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
         itemCount: state.activities.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           final activity = state.activities[index];
           return ActivityCard(
@@ -143,36 +311,32 @@ class _FeedScreenState extends State<FeedScreen>
 
   Widget _buildRecommendationsTab(FeedState state) {
     if (state.isLoadingRecommendations && state.recommendations.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const _FeedLoadingList();
     }
 
     if (state.recommendations.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.lightbulb_outline, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text(
-              'Aucune recommandation pour le moment',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => _bloc.add(LoadRecommendationsEvent()),
-              child: const Text('Charger'),
-            ),
-          ],
-        ),
+      return _FeedEmptyState(
+        icon: Icons.lightbulb_outline,
+        title: 'Aucune recommandation pour le moment',
+        subtitle:
+            'Lance un rafraichissement pour recuperer de nouvelles suggestions.',
+        buttonLabel: 'Charger',
+        onPressed: () => _bloc.add(LoadRecommendationsEvent()),
       );
     }
 
     return RefreshIndicator(
+      color: Colors.white,
       onRefresh: () async {
         _bloc.add(LoadRecommendationsEvent());
       },
-      child: ListView.builder(
+      child: ListView.separated(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
         itemCount: state.recommendations.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           final recommendation = state.recommendations[index];
           return RecommendationCard(
@@ -186,6 +350,214 @@ class _FeedScreenState extends State<FeedScreen>
           );
         },
       ),
+    );
+  }
+}
+
+class _FeedBackground extends StatelessWidget {
+  final Widget child;
+
+  const _FeedBackground({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF0D1B2A),
+                  const Color(0xFF1B263B),
+                  Colors.blueGrey.shade700,
+                ],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: -80,
+          right: -60,
+          child: _GlowCircle(
+            diameter: 220,
+            color: Colors.lightBlueAccent.withValues(alpha: 0.2),
+          ),
+        ),
+        Positioned(
+          bottom: -100,
+          left: -70,
+          child: _GlowCircle(
+            diameter: 250,
+            color: Colors.tealAccent.withValues(alpha: 0.16),
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+class _GlowCircle extends StatelessWidget {
+  final double diameter;
+  final Color color;
+
+  const _GlowCircle({required this.diameter, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: diameter,
+        height: diameter,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedMetricTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _FeedMetricTile({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.white),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.82),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeedEmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String buttonLabel;
+  final VoidCallback onPressed;
+
+  const _FeedEmptyState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.buttonLabel,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        const SizedBox(height: 90),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10253A).withValues(alpha: 0.82),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            ),
+            child: Column(
+              children: [
+                Icon(icon, size: 44, color: const Color(0xFFAED3FF)),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  subtitle,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.82),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: onPressed,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(buttonLabel),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A7BF7),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FeedLoadingList extends StatelessWidget {
+  const _FeedLoadingList();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
+      itemCount: 4,
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        return Container(
+          height: 110,
+          decoration: BoxDecoration(
+            color: const Color(0xFF10253A).withValues(alpha: 0.78),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+        );
+      },
     );
   }
 }

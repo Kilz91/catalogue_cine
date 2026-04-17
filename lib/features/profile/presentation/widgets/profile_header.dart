@@ -9,57 +9,111 @@ class ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 60,
-          backgroundColor: Colors.grey[300],
-          backgroundImage: user.profileImageUrl != null
-              ? NetworkImage(user.profileImageUrl!)
-              : null,
-          child: user.profileImageUrl == null
-              ? Text(
-                  _getInitials(user.displayName ?? user.email),
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                )
-              : null,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          user.displayName ?? 'Utilisateur',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          user.email,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
-        ),
-        if (user.isVerified) ...[
-          const SizedBox(height: 8),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.verified, size: 16, color: Colors.blue[700]),
-              const SizedBox(width: 4),
-              Text(
-                'Vérifié',
-                style: TextStyle(
-                  color: Colors.blue[700],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+    final displayName = (user.displayName ?? '').trim().isEmpty
+        ? 'Utilisateur'
+        : user.displayName!.trim();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10253A).withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.22),
+            blurRadius: 20,
+            offset: const Offset(0, 12),
           ),
         ],
-      ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: const Color(0xFFAED3FF).withValues(alpha: 0.65),
+              ),
+            ),
+            child: CircleAvatar(
+              radius: 52,
+              backgroundColor: const Color(0xFF1B3B58),
+              backgroundImage: user.profileImageUrl != null
+                  ? NetworkImage(user.profileImageUrl!)
+                  : null,
+              child: user.profileImageUrl == null
+                  ? Text(
+                      _getInitials(displayName),
+                      style: const TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    )
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            displayName,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            user.email,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withValues(alpha: 0.82),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: user.isVerified
+                  ? const Color(0xFF4ADE80).withValues(alpha: 0.14)
+                  : const Color(0xFFFFC857).withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(100),
+              border: Border.all(
+                color: user.isVerified
+                    ? const Color(0xFF4ADE80).withValues(alpha: 0.6)
+                    : const Color(0xFFFFC857).withValues(alpha: 0.6),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  user.isVerified ? Icons.verified : Icons.pending_outlined,
+                  size: 16,
+                  color: user.isVerified
+                      ? const Color(0xFF4ADE80)
+                      : const Color(0xFFFFC857),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  user.isVerified
+                      ? 'Compte verifie'
+                      : 'Verification en attente',
+                  style: TextStyle(
+                    color: user.isVerified
+                        ? const Color(0xFF4ADE80)
+                        : const Color(0xFFFFC857),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
