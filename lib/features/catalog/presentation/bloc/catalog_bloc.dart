@@ -71,15 +71,16 @@ class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
     try {
       await addToCatalogUseCase(media: event.media, status: event.status);
       // Logger l'activité selon le statut
-      final actionType = event.status == 'watching' 
-          ? 'started' 
-          : event.status == 'planned' 
-              ? 'planned' 
-              : null;
+      final actionType = event.status == 'watching'
+          ? 'started'
+          : event.status == 'planned'
+          ? 'planned'
+          : null;
 
       if (actionType != null) {
         // Construire l'URL complète du poster
-        final posterUrl = event.media.posterPath != null && event.media.posterPath!.isNotEmpty
+        final posterUrl =
+            event.media.posterPath != null && event.media.posterPath!.isNotEmpty
             ? 'https://image.tmdb.org/t/p/w500${event.media.posterPath}'
             : '';
 
@@ -91,9 +92,16 @@ class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
           mediaPoster: posterUrl,
         );
       }
-      
-      final catalog = await getUserCatalogUseCase(status: state.statusFilter);
-      emit(state.copyWith(isLoading: false, catalog: catalog));
+
+      final catalog = await getUserCatalogUseCase(status: event.status);
+      emit(
+        state.copyWith(
+          isLoading: false,
+          catalog: catalog,
+          statusFilter: event.status,
+          searchResults: const [],
+        ),
+      );
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }

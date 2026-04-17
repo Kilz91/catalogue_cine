@@ -10,41 +10,39 @@ class ProfileInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Informations',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
-              if (user.bio != null && user.bio!.isNotEmpty) ...[
-                _buildInfoRow(
-                  context,
-                  Icons.info_outline,
-                  'Biographie',
-                  user.bio!,
-                ),
-                const Divider(height: 24),
-              ],
-              _buildInfoRow(context, Icons.email_outlined, 'Email', user.email),
-              if (user.createdAt != null) ...[
-                const Divider(height: 24),
-                _buildInfoRow(
-                  context,
-                  Icons.calendar_today,
-                  'Membre depuis',
-                  _formatDate(user.createdAt!),
-                ),
-              ],
-            ],
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10253A).withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Informations',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
+          const SizedBox(height: 14),
+          if (user.bio != null && user.bio!.isNotEmpty) ...[
+            _buildInfoRow(context, Icons.info_outline, 'Biographie', user.bio!),
+            Divider(height: 26, color: Colors.white.withValues(alpha: 0.14)),
+          ],
+          _buildInfoRow(context, Icons.email_outlined, 'Email', user.email),
+          if (user.createdAt != null) ...[
+            Divider(height: 26, color: Colors.white.withValues(alpha: 0.14)),
+            _buildInfoRow(
+              context,
+              Icons.calendar_today,
+              'Membre depuis',
+              _formatDate(user.createdAt!),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -58,7 +56,7 @@ class ProfileInfoCard extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: Colors.grey[600]),
+        Icon(icon, size: 20, color: const Color(0xFFAED3FF)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -66,12 +64,18 @@ class ProfileInfoCard extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.72),
+                ),
               ),
               const SizedBox(height: 4),
-              Text(value, style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),
