@@ -16,31 +16,125 @@ class ReceivedRequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final senderName = request.senderName.trim().isEmpty
+        ? 'Utilisateur'
+        : request.senderName.trim();
+    final senderInitial = senderName[0].toUpperCase();
+
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          child: Text(request.senderName[0].toUpperCase()),
+      color: Colors.transparent,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10253A).withValues(alpha: 0.82),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
-        title: Text(request.senderName),
-        subtitle: Text(request.senderEmail),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+        child: Column(
           children: [
-            IconButton(
-              icon: const Icon(Icons.check, color: Colors.green),
-              onPressed: onAccept,
-              tooltip: 'Accepter',
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFAED3FF).withValues(alpha: 0.65),
+                    ),
+                  ),
+                  child: CircleAvatar(
+                    radius: 23,
+                    backgroundColor: const Color(0xFF1B3B58),
+                    child: Text(
+                      senderInitial,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        senderName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        request.senderEmail,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.76),
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Recue le ${_formatDate(request.createdAt)}',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.62),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            IconButton(
-              icon: const Icon(Icons.close, color: Colors.red),
-              onPressed: onReject,
-              tooltip: 'Refuser',
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onReject,
+                    icon: const Icon(Icons.close),
+                    label: const Text('Refuser'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFFF8A80),
+                      side: BorderSide(
+                        color: const Color(0xFFFF8A80).withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: onAccept,
+                    icon: const Icon(Icons.check),
+                    label: const Text('Accepter'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF4A7BF7),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year;
+    return '$day/$month/$year';
   }
 }
 
@@ -58,27 +152,85 @@ class SentRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final receiverName = request.receiverName ?? 'Utilisateur';
-    final receiverInitial = receiverName.isNotEmpty ? receiverName[0].toUpperCase() : '?';
-    
+    final receiverInitial = receiverName.isNotEmpty
+        ? receiverName[0].toUpperCase()
+        : '?';
+
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.blue,
-          child: Text(receiverInitial, style: const TextStyle(color: Colors.white)),
+      color: Colors.transparent,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10253A).withValues(alpha: 0.82),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
-        title: Text('En attente'),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
-            Text(receiverName, style: const TextStyle(fontWeight: FontWeight.w500)),
-            Text('Envoyée le ${_formatDate(request.createdAt)}', style: const TextStyle(fontSize: 12)),
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFFAED3FF).withValues(alpha: 0.65),
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 23,
+                backgroundColor: const Color(0xFF1B3B58),
+                child: Text(
+                  receiverInitial,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'En attente',
+                    style: TextStyle(
+                      color: Color(0xFFFFC857),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    receiverName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Envoyee le ${_formatDate(request.createdAt)}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.62),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            TextButton.icon(
+              onPressed: onCancel,
+              icon: const Icon(Icons.close, size: 16),
+              label: const Text('Annuler'),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFFF8A80),
+              ),
+            ),
           ],
-        ),
-        trailing: TextButton(
-          onPressed: onCancel,
-          child: const Text('Annuler'),
         ),
       ),
     );

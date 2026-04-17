@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/di/service_locator.dart';
@@ -77,7 +78,10 @@ class _FeedScreenState extends State<FeedScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => _bloc.add(RefreshFeedEvent()),
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              _bloc.add(RefreshFeedEvent());
+            },
             tooltip: 'Actualiser le feed',
           ),
         ],
@@ -92,27 +96,49 @@ class _FeedScreenState extends State<FeedScreen>
 
             return Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: _buildHeaderCard(context, state),
-                ),
-                if (isSyncing)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 10),
-                    child: LinearProgressIndicator(
-                      color: Color(0xFFAED3FF),
-                      backgroundColor: Color(0xFF1B3B58),
-                    ),
+                _EntranceMotion(
+                  delayMs: 40,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: _buildHeaderCard(context, state),
                   ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: _buildTabSwitcher(),
                 ),
-                if (hasError)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                    child: _buildErrorBanner(state.errorMessage!),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: isSyncing
+                      ? const Padding(
+                          key: ValueKey('feed-syncing'),
+                          padding: EdgeInsets.only(top: 10),
+                          child: LinearProgressIndicator(
+                            color: Color(0xFFAED3FF),
+                            backgroundColor: Color(0xFF1B3B58),
+                          ),
+                        )
+                      : const SizedBox.shrink(
+                          key: ValueKey('feed-not-syncing'),
+                        ),
+                ),
+                _EntranceMotion(
+                  delayMs: 90,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: _buildTabSwitcher(),
                   ),
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 240),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: hasError
+                      ? Padding(
+                          key: ValueKey('feed-error-${state.errorMessage}'),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                          child: _buildErrorBanner(state.errorMessage!),
+                        )
+                      : const SizedBox.shrink(key: ValueKey('feed-no-error')),
+                ),
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
@@ -223,6 +249,7 @@ class _FeedScreenState extends State<FeedScreen>
           color: const Color(0xFF4A7BF7),
           borderRadius: BorderRadius.circular(10),
         ),
+        onTap: (_) => HapticFeedback.selectionClick(),
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white.withValues(alpha: 0.74),
         tabs: const [
@@ -295,14 +322,18 @@ class _FeedScreenState extends State<FeedScreen>
         separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           final activity = state.activities[index];
-          return ActivityCard(
-            activity: activity,
-            onTap: () {
-              _openMediaDetail(
-                rawMediaId: activity.mediaId,
-                rawMediaType: activity.mediaType,
-              );
-            },
+          return _FeedStaggerReveal(
+            index: index,
+            identity: 'activity-${activity.id}',
+            child: ActivityCard(
+              activity: activity,
+              onTap: () {
+                _openMediaDetail(
+                  rawMediaId: activity.mediaId,
+                  rawMediaType: activity.mediaType,
+                );
+              },
+            ),
           );
         },
       ),
@@ -339,17 +370,88 @@ class _FeedScreenState extends State<FeedScreen>
         separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           final recommendation = state.recommendations[index];
-          return RecommendationCard(
-            recommendation: recommendation,
-            onTap: () {
-              _openMediaDetail(
-                rawMediaId: recommendation.mediaId,
-                rawMediaType: recommendation.mediaType,
-              );
-            },
+          return _FeedStaggerReveal(
+            index: index,
+            identity: 'recommendation-${recommendation.id}',
+            child: RecommendationCard(
+              recommendation: recommendation,
+              onTap: () {
+                _openMediaDetail(
+                  rawMediaId: recommendation.mediaId,
+                  rawMediaType: recommendation.mediaType,
+                );
+              },
+            ),
           );
         },
       ),
+    );
+  }
+}
+
+class _EntranceMotion extends StatelessWidget {
+  final Widget child;
+  final int delayMs;
+
+  const _EntranceMotion({required this.child, this.delayMs = 0});
+
+  @override
+  Widget build(BuildContext context) {
+    const motionMs = 380;
+    final totalMs = delayMs + motionMs;
+    final start = delayMs == 0 ? 0.0 : delayMs / totalMs;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: totalMs),
+      curve: Interval(start, 1, curve: Curves.easeOutCubic),
+      child: child,
+      builder: (context, value, animatedChild) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * 12),
+            child: animatedChild,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FeedStaggerReveal extends StatelessWidget {
+  final int index;
+  final String identity;
+  final Widget child;
+
+  const _FeedStaggerReveal({
+    required this.index,
+    required this.identity,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = index.clamp(0, 10);
+    final delayMs = clamped * 42;
+    final totalMs = 280 + delayMs;
+    final start = delayMs == 0 ? 0.0 : delayMs / totalMs;
+
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(identity),
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: totalMs),
+      curve: Interval(start, 1, curve: Curves.easeOutCubic),
+      child: child,
+      builder: (context, value, animatedChild) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * 14),
+            child: animatedChild,
+          ),
+        );
+      },
     );
   }
 }
@@ -448,11 +550,34 @@ class _FeedMetricTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) {
+                    final curved = CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    );
+
+                    return FadeTransition(
+                      opacity: curved,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.25),
+                          end: Offset.zero,
+                        ).animate(curved),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Text(
+                    value,
+                    key: ValueKey(value),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 Text(
@@ -549,10 +674,53 @@ class _FeedLoadingList extends StatelessWidget {
       itemCount: 4,
       separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
+        return _PulsingSkeletonTile(delayMs: index * 70);
+      },
+    );
+  }
+}
+
+class _PulsingSkeletonTile extends StatefulWidget {
+  final int delayMs;
+
+  const _PulsingSkeletonTile({this.delayMs = 0});
+
+  @override
+  State<_PulsingSkeletonTile> createState() => _PulsingSkeletonTileState();
+}
+
+class _PulsingSkeletonTileState extends State<_PulsingSkeletonTile>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 980 + widget.delayMs),
+    )..repeat(reverse: true);
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        final alpha = 0.62 + (_animation.value * 0.18);
+
         return Container(
           height: 110,
           decoration: BoxDecoration(
-            color: const Color(0xFF10253A).withValues(alpha: 0.78),
+            color: const Color(0xFF17324C).withValues(alpha: alpha),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
