@@ -99,7 +99,8 @@ service cloud.firestore {
       // Création : seulement si on est l'expéditeur ET dans la conversation
       allow create: if request.auth != null && 
         request.resource.data.senderId == request.auth.uid &&
-        request.auth.uid in get(/databases/$(database)/documents/conversations/$(request.resource.data.conversationId)).data.participantIds;
+        request.auth.uid in get(/databases/$(database)/documents/conversations/$(request.resource.data.conversationId)).data.participantIds &&
+        get(/databases/$(database)/documents/conversations/$(request.resource.data.conversationId)).data.isMessagingAllowed != false;
       
       // Mise à jour : pour marquer comme lu (isRead)
       allow update: if request.auth != null && 

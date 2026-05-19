@@ -12,15 +12,15 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Stream<List<ChatConversationEntity>> getConversations() {
     return remoteDataSource.getConversations().map(
-          (models) => models.map((model) => model.toEntity()).toList(),
-        );
+      (models) => models.map((model) => model.toEntity()).toList(),
+    );
   }
 
   @override
   Stream<List<ChatMessageEntity>> getMessages(String conversationId) {
-    return remoteDataSource.getMessages(conversationId).map(
-          (models) => models.map((model) => model.toEntity()).toList(),
-        );
+    return remoteDataSource
+        .getMessages(conversationId)
+        .map((models) => models.map((model) => model.toEntity()).toList());
   }
 
   @override
@@ -42,5 +42,10 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<void> markMessagesAsRead(String conversationId) {
     return remoteDataSource.markMessagesAsRead(conversationId);
+  }
+
+  @override
+  Future<void> deleteConversationForMe(String conversationId) {
+    return remoteDataSource.deleteConversationForMe(conversationId);
   }
 }

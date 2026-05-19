@@ -17,10 +17,7 @@ class SendMessageEvent extends ChatEvent {
   final String conversationId;
   final String content;
 
-  SendMessageEvent({
-    required this.conversationId,
-    required this.content,
-  });
+  SendMessageEvent({required this.conversationId, required this.content});
 }
 
 /// Créer ou obtenir une conversation
@@ -35,4 +32,11 @@ class MarkMessagesAsReadEvent extends ChatEvent {
   final String conversationId;
 
   MarkMessagesAsReadEvent(this.conversationId);
+}
+
+/// Supprimer une conversation pour l'utilisateur actuel uniquement
+class DeleteConversationForMeEvent extends ChatEvent {
+  final String conversationId;
+
+  DeleteConversationForMeEvent(this.conversationId);
 }

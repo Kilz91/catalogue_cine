@@ -6,12 +6,14 @@ class ReceivedRequestCard extends StatelessWidget {
   final FriendRequestEntity request;
   final VoidCallback onAccept;
   final VoidCallback onReject;
+  final bool isProcessing;
 
   const ReceivedRequestCard({
     super.key,
     required this.request,
     required this.onAccept,
     required this.onReject,
+    this.isProcessing = false,
   });
 
   @override
@@ -99,7 +101,7 @@ class ReceivedRequestCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: onReject,
+                    onPressed: isProcessing ? null : onReject,
                     icon: const Icon(Icons.close),
                     label: const Text('Refuser'),
                     style: OutlinedButton.styleFrom(
@@ -113,7 +115,7 @@ class ReceivedRequestCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: onAccept,
+                    onPressed: isProcessing ? null : onAccept,
                     icon: const Icon(Icons.check),
                     label: const Text('Accepter'),
                     style: FilledButton.styleFrom(
@@ -123,6 +125,35 @@ class ReceivedRequestCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: isProcessing
+                  ? Padding(
+                      key: const ValueKey('received-processing'),
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white.withValues(alpha: 0.86),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Traitement de la demande...',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.76),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox.shrink(key: ValueKey('received-idle')),
             ),
           ],
         ),
@@ -142,11 +173,13 @@ class ReceivedRequestCard extends StatelessWidget {
 class SentRequestCard extends StatelessWidget {
   final FriendRequestEntity request;
   final VoidCallback onCancel;
+  final bool isProcessing;
 
   const SentRequestCard({
     super.key,
     required this.request,
     required this.onCancel,
+    this.isProcessing = false,
   });
 
   @override
@@ -223,9 +256,18 @@ class SentRequestCard extends StatelessWidget {
               ),
             ),
             TextButton.icon(
-              onPressed: onCancel,
-              icon: const Icon(Icons.close, size: 16),
-              label: const Text('Annuler'),
+              onPressed: isProcessing ? null : onCancel,
+              icon: isProcessing
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFFFF8A80),
+                      ),
+                    )
+                  : const Icon(Icons.close, size: 16),
+              label: Text(isProcessing ? 'Annulation...' : 'Annuler'),
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFFFF8A80),
               ),

@@ -21,20 +21,23 @@ class _FeedScreenState extends State<FeedScreen>
     with SingleTickerProviderStateMixin {
   late final FeedBloc _bloc;
   late final TabController _tabController;
+  String? _pendingMediaKey;
 
-  void _openMediaDetail({
+  Future<void> _openMediaDetail({
     required String rawMediaId,
     required String rawMediaType,
-  }) {
+    required String actionKey,
+  }) async {
+    if (_pendingMediaKey != null) return;
+    setState(() => _pendingMediaKey = actionKey);
+
     final mediaId = int.tryParse(rawMediaId);
     if (mediaId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Impossible d\'ouvrir ce media (identifiant invalide).',
-          ),
-        ),
+      _showFeedbackSnack(
+        message: 'Impossible d\'ouvrir ce media (identifiant invalide).',
+        isError: true,
       );
+      setState(() => _pendingMediaKey = null);
       return;
     }
 
@@ -43,10 +46,18 @@ class _FeedScreenState extends State<FeedScreen>
         ? rawMediaType
         : 'movie';
 
-    context.pushNamed(
-      'mediaDetailWithType',
-      pathParameters: {'id': '$mediaId', 'type': mediaType},
-    );
+    HapticFeedback.lightImpact();
+
+    try {
+      await context.pushNamed(
+        'mediaDetailWithType',
+        pathParameters: {'id': '$mediaId', 'type': mediaType},
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _pendingMediaKey = null);
+      }
+    }
   }
 
   @override
@@ -78,10 +89,12 @@ class _FeedScreenState extends State<FeedScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              _bloc.add(RefreshFeedEvent());
-            },
+            onPressed: _pendingMediaKey == null
+                ? () {
+                    HapticFeedback.selectionClick();
+                    _bloc.add(RefreshFeedEvent());
+                  }
+                : null,
             tooltip: 'Actualiser le feed',
           ),
         ],
@@ -118,6 +131,57 @@ class _FeedScreenState extends State<FeedScreen>
                         )
                       : const SizedBox.shrink(
                           key: ValueKey('feed-not-syncing'),
+                        ),
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 190),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: _pendingMediaKey == null
+                      ? const SizedBox.shrink(key: ValueKey('feed-open-idle'))
+                      : Padding(
+                          key: ValueKey('feed-open-$_pendingMediaKey'),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 9,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF12304A,
+                              ).withValues(alpha: 0.82),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFAED3FF),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Ouverture de la fiche media...',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                 ),
                 _EntranceMotion(
@@ -327,8 +391,10 @@ class _FeedScreenState extends State<FeedScreen>
             identity: 'activity-${activity.id}',
             child: ActivityCard(
               activity: activity,
+              isProcessing: _pendingMediaKey == 'activity-${activity.id}',
               onTap: () {
                 _openMediaDetail(
+                  actionKey: 'activity-${activity.id}',
                   rawMediaId: activity.mediaId,
                   rawMediaType: activity.mediaType,
                 );
@@ -375,8 +441,11 @@ class _FeedScreenState extends State<FeedScreen>
             identity: 'recommendation-${recommendation.id}',
             child: RecommendationCard(
               recommendation: recommendation,
+              isProcessing:
+                  _pendingMediaKey == 'recommendation-${recommendation.id}',
               onTap: () {
                 _openMediaDetail(
+                  actionKey: 'recommendation-${recommendation.id}',
                   rawMediaId: recommendation.mediaId,
                   rawMediaType: recommendation.mediaType,
                 );
@@ -386,6 +455,34 @@ class _FeedScreenState extends State<FeedScreen>
         },
       ),
     );
+  }
+
+  void _showFeedbackSnack({required String message, required bool isError}) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          backgroundColor: isError
+              ? const Color(0xFF9F2A24)
+              : const Color(0xFF1D6B34),
+          content: Row(
+            children: [
+              Icon(
+                isError ? Icons.error_outline : Icons.check_circle_outline,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(message)),
+            ],
+          ),
+        ),
+      );
   }
 }
 

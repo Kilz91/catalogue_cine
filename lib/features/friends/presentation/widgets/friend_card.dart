@@ -7,12 +7,14 @@ class FriendCard extends StatefulWidget {
   final FriendshipEntity friendship;
   final VoidCallback onRemove;
   final VoidCallback onMessage;
+  final bool isProcessing;
 
   const FriendCard({
     super.key,
     required this.friendship,
     required this.onRemove,
     required this.onMessage,
+    this.isProcessing = false,
   });
 
   @override
@@ -34,6 +36,7 @@ class _FriendCardState extends State<FriendCard> {
         ? 'Utilisateur'
         : friendship.friendName.trim();
     final initial = displayName[0].toUpperCase();
+    final canInteract = !widget.isProcessing;
 
     return AnimatedScale(
       duration: const Duration(milliseconds: 130),
@@ -43,21 +46,23 @@ class _FriendCardState extends State<FriendCard> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTapDown: (_) => _setPressed(true),
-          onTapCancel: () => _setPressed(false),
-          onTapUp: (_) => _setPressed(false),
-          onTap: () {
-            HapticFeedback.lightImpact();
-            widget.onMessage();
-          },
+          onTapDown: canInteract ? (_) => _setPressed(true) : null,
+          onTapCancel: canInteract ? () => _setPressed(false) : null,
+          onTapUp: canInteract ? (_) => _setPressed(false) : null,
+          onTap: canInteract
+              ? () {
+                  HapticFeedback.lightImpact();
+                  widget.onMessage();
+                }
+              : null,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 140),
             curve: Curves.easeOutCubic,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             decoration: BoxDecoration(
-              color: const Color(
-                0xFF10253A,
-              ).withValues(alpha: _isPressed ? 0.9 : 0.82),
+              color: const Color(0xFF10253A).withValues(
+                alpha: widget.isProcessing ? 0.72 : (_isPressed ? 0.9 : 0.82),
+              ),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: Colors.white.withValues(alpha: _isPressed ? 0.2 : 0.1),
@@ -127,31 +132,80 @@ class _FriendCardState extends State<FriendCard> {
                           fontSize: 11,
                         ),
                       ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        child: widget.isProcessing
+                            ? Padding(
+                                key: const ValueKey('friend-processing'),
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.86,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Mise a jour...',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.76,
+                                        ),
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : const SizedBox.shrink(
+                                key: ValueKey('friend-idle'),
+                              ),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.chat_bubble_outline,
-                        color: Color(0xFFAED3FF),
-                      ),
-                      onPressed: widget.onMessage,
-                      tooltip: 'Envoyer un message',
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Color(0xFFFF8A80),
-                      ),
-                      onPressed: () =>
-                          _showConfirmRemoval(context, displayName),
-                      tooltip: 'Supprimer',
-                    ),
-                  ],
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: widget.isProcessing
+                      ? const SizedBox(
+                          key: ValueKey('friend-side-progress'),
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Color(0xFFAED3FF),
+                          ),
+                        )
+                      : Column(
+                          key: const ValueKey('friend-side-actions'),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.chat_bubble_outline,
+                                color: Color(0xFFAED3FF),
+                              ),
+                              onPressed: widget.onMessage,
+                              tooltip: 'Envoyer un message',
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: Color(0xFFFF8A80),
+                              ),
+                              onPressed: () =>
+                                  _showConfirmRemoval(context, displayName),
+                              tooltip: 'Supprimer',
+                            ),
+                          ],
+                        ),
                 ),
               ],
             ),

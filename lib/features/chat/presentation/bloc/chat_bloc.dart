@@ -8,6 +8,7 @@ import '../../domain/usecases/get_messages_usecase.dart';
 import '../../domain/usecases/send_message_usecase.dart';
 import '../../domain/usecases/get_or_create_conversation_usecase.dart';
 import '../../domain/usecases/mark_messages_as_read_usecase.dart';
+import '../../domain/usecases/delete_conversation_for_me_usecase.dart';
 
 part 'chat_event.dart';
 part 'chat_state.dart';
@@ -18,6 +19,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final SendMessageUseCase sendMessageUseCase;
   final GetOrCreateConversationUseCase getOrCreateConversationUseCase;
   final MarkMessagesAsReadUseCase markMessagesAsReadUseCase;
+  final DeleteConversationForMeUseCase deleteConversationForMeUseCase;
 
   ChatBloc({
     required this.getConversationsUseCase,
@@ -25,12 +27,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     required this.sendMessageUseCase,
     required this.getOrCreateConversationUseCase,
     required this.markMessagesAsReadUseCase,
+    required this.deleteConversationForMeUseCase,
   }) : super(const ChatState()) {
     on<LoadConversationsEvent>(_onLoadConversations);
     on<LoadMessagesEvent>(_onLoadMessages);
     on<SendMessageEvent>(_onSendMessage);
     on<CreateConversationEvent>(_onCreateConversation);
     on<MarkMessagesAsReadEvent>(_onMarkMessagesAsRead);
+    on<DeleteConversationForMeEvent>(_onDeleteConversationForMe);
   }
 
   Future<void> _onLoadConversations(
@@ -62,21 +66,20 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     LoadMessagesEvent event,
     Emitter<ChatState> emit,
   ) async {
-    emit(state.copyWith(
-      isLoadingMessages: true,
-      errorMessage: null,
-      currentConversationId: event.conversationId,
-      messages: [],
-    ));
+    emit(
+      state.copyWith(
+        isLoadingMessages: true,
+        errorMessage: null,
+        currentConversationId: event.conversationId,
+        messages: [],
+      ),
+    );
 
     await emit.forEach<List<ChatMessageEntity>>(
       getMessagesUseCase.call(event.conversationId),
       onData: (messages) {
         debugPrint('✅ MESSAGES LOADED: ${messages.length}');
-        return state.copyWith(
-          messages: messages,
-          isLoadingMessages: false,
-        );
+        return state.copyWith(messages: messages, isLoadingMessages: false);
       },
       onError: (error, stackTrace) {
         debugPrint('❌ MESSAGES ERROR: $error');
@@ -103,10 +106,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       );
       emit(state.copyWith(isSending: false));
     } catch (e) {
-      emit(state.copyWith(
-        isSending: false,
-        errorMessage: e.toString(),
-      ));
+      emit(state.copyWith(isSending: false, errorMessage: e.toString()));
       debugPrint('❌ SEND MESSAGE ERROR: $e');
     }
   }
@@ -116,8 +116,9 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     Emitter<ChatState> emit,
   ) async {
     try {
-      final conversationId =
-          await getOrCreateConversationUseCase.call(event.friendId);
+      final conversationId = await getOrCreateConversationUseCase.call(
+        event.friendId,
+      );
       debugPrint('✅ CONVERSATION ID: $conversationId');
       // La navigation sera gérée dans l'UI
     } catch (e) {
@@ -134,6 +135,19 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       await markMessagesAsReadUseCase.call(event.conversationId);
     } catch (e) {
       debugPrint('❌ MARK AS READ ERROR: $e');
+    }
+  }
+
+  Future<void> _onDeleteConversationForMe(
+    DeleteConversationForMeEvent event,
+    Emitter<ChatState> emit,
+  ) async {
+    try {
+      await deleteConversationForMeUseCase.call(event.conversationId);
+      emit(state.copyWith(errorMessage: null));
+    } catch (e) {
+      emit(state.copyWith(errorMessage: e.toString()));
+      debugPrint('❌ DELETE CONVERSATION ERROR: $e');
     }
   }
 }

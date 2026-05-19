@@ -23,10 +23,7 @@ class FriendsRemoteDataSourceImpl implements FriendsRemoteDataSource {
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
 
-  FriendsRemoteDataSourceImpl({
-    required this.firestore,
-    required this.auth,
-  });
+  FriendsRemoteDataSourceImpl({required this.firestore, required this.auth});
 
   String get _currentUserId {
     final user = auth.currentUser;
@@ -34,39 +31,67 @@ class FriendsRemoteDataSourceImpl implements FriendsRemoteDataSource {
     return user.uid;
   }
 
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  _findDirectConversationsBetween({
+    required String userAId,
+    required String userBId,
+  }) async {
+    final snapshot = await firestore
+        .collection('conversations')
+        .where('participantIds', arrayContains: userAId)
+        .get();
+
+    return snapshot.docs.where((doc) {
+      final participantIds =
+          (doc.data()['participantIds'] as List?)?.cast<String>() ?? [];
+      return participantIds.length == 2 &&
+          participantIds.contains(userAId) &&
+          participantIds.contains(userBId);
+    }).toList();
+  }
+
   @override
-  Future<List<UserSearchResultModel>> searchUsers({required String query}) async {
+  Future<List<UserSearchResultModel>> searchUsers({
+    required String query,
+  }) async {
     try {
       if (query.isEmpty) return [];
 
       final queryLower = query.toLowerCase();
-      
+
       debugPrint('🔥 FIRESTORE SEARCH: recherche de "$queryLower"');
-      
+
       // Récupérer tous les users et filtrer en mémoire
       final snapshot = await firestore.collection('users').get();
-      
+
       debugPrint('🔥 Total users: ${snapshot.docs.length}');
-      
+
       final results = snapshot.docs
           .where((doc) {
             final data = doc.data();
-            final displayName = (data['displayName'] ?? '').toString().toLowerCase();
-            final displayNameLower = (data['displayNameLower'] ?? '').toString().toLowerCase();
-            
+            final displayName = (data['displayName'] ?? '')
+                .toString()
+                .toLowerCase();
+            final displayNameLower = (data['displayNameLower'] ?? '')
+                .toString()
+                .toLowerCase();
+
             // Chercher soit dans displayName soit dans displayNameLower
-            final matches = displayName.contains(queryLower) || 
-                           displayNameLower.contains(queryLower);
-            
+            final matches =
+                displayName.contains(queryLower) ||
+                displayNameLower.contains(queryLower);
+
             if (matches) {
-              debugPrint('   ✅ Match trouvé: ${data['displayName']} (${doc.id})');
+              debugPrint(
+                '   ✅ Match trouvé: ${data['displayName']} (${doc.id})',
+              );
             }
-            
+
             return matches && doc.id != _currentUserId;
           })
           .map((doc) => UserSearchResultModel.fromFirestore(doc))
           .toList();
-      
+
       debugPrint('🔥 Résultats: ${results.length} trouvés');
       return results;
     } catch (e) {
@@ -133,9 +158,7 @@ class FriendsRemoteDataSourceImpl implements FriendsRemoteDataSource {
         createdAt: DateTime.now(),
       );
 
-      await firestore
-          .collection('friend_requests')
-          .add(request.toFirestore());
+      await firestore.collection('friend_requests').add(request.toFirestore());
     } catch (e) {
       throw ServerException(e.toString());
     }
@@ -203,6 +226,15 @@ class FriendsRemoteDataSourceImpl implements FriendsRemoteDataSource {
         friendship2.toFirestore(),
       );
 
+      // Réactiver l'envoi de messages pour une conversation existante (si elle existe)
+      final directConversations = await _findDirectConversationsBetween(
+        userAId: request.senderId,
+        userBId: _currentUserId,
+      );
+      for (final conversationDoc in directConversations) {
+        batch.update(conversationDoc.reference, {'isMessagingAllowed': true});
+      }
+
       // Supprimer la demande
       batch.delete(firestore.collection('friend_requests').doc(requestId));
 
@@ -243,12 +275,23 @@ class FriendsRemoteDataSourceImpl implements FriendsRemoteDataSource {
           .where('friendId', isEqualTo: friendship.userId)
           .get();
 
+      // Trouver la/les conversation(s) directe(s) entre les deux utilisateurs
+      final directConversations = await _findDirectConversationsBetween(
+        userAId: friendship.userId,
+        userBId: friendship.friendId,
+      );
+
       // Supprimer les deux amitiés
       final batch = firestore.batch();
       batch.delete(firestore.collection('friendships').doc(friendshipId));
-      
+
       for (final doc in reciprocalQuery.docs) {
         batch.delete(doc.reference);
+      }
+
+      // Conserver la conversation mais passer en lecture seule (plus d'envoi)
+      for (final conversationDoc in directConversations) {
+        batch.update(conversationDoc.reference, {'isMessagingAllowed': false});
       }
 
       await batch.commit();

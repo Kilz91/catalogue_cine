@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../domain/entities/chat_conversation_entity.dart';
 import '../bloc/chat_bloc.dart';
 import '../widgets/conversation_card.dart';
 
@@ -16,6 +17,8 @@ class ConversationsScreen extends StatefulWidget {
 
 class _ConversationsScreenState extends State<ConversationsScreen> {
   late final ChatBloc _bloc;
+  String? _pendingConversationId;
+  final Set<String> _deletingConversationIds = <String>{};
 
   @override
   void initState() {
@@ -27,6 +30,117 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   void dispose() {
     _bloc.close();
     super.dispose();
+  }
+
+  Future<void> _openConversation(String conversationId) async {
+    if (_pendingConversationId != null) return;
+
+    setState(() => _pendingConversationId = conversationId);
+    HapticFeedback.lightImpact();
+
+    try {
+      await context.pushNamed(
+        'chatConversation',
+        pathParameters: {'conversationId': conversationId},
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _pendingConversationId = null);
+      }
+    }
+  }
+
+  Future<bool> _confirmDeleteConversation() async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF10253A),
+          title: const Text(
+            'Supprimer cette conversation ?',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            'La conversation sera supprimee pour vous uniquement. '
+            'L\'autre utilisateur la conservera.',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.84)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Annuler'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFFF8A80),
+              ),
+              child: const Text('Supprimer'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return shouldDelete == true;
+  }
+
+  void _deleteConversationForMe(String conversationId) {
+    if (_deletingConversationIds.contains(conversationId)) return;
+    HapticFeedback.selectionClick();
+    setState(() => _deletingConversationIds.add(conversationId));
+    _bloc.add(DeleteConversationForMeEvent(conversationId));
+  }
+
+  void _syncDeletingStateWith(List<ChatConversationEntity> conversations) {
+    if (_deletingConversationIds.isEmpty) return;
+    final visibleIds = conversations
+        .map((conversation) => conversation.id)
+        .toSet();
+    final remainingDeleting = _deletingConversationIds
+        .where((id) => visibleIds.contains(id))
+        .toSet();
+
+    if (remainingDeleting.length == _deletingConversationIds.length) return;
+
+    setState(() {
+      _deletingConversationIds
+        ..clear()
+        ..addAll(remainingDeleting);
+    });
+  }
+
+  void _clearDeletingState() {
+    if (_deletingConversationIds.isEmpty) return;
+    setState(() => _deletingConversationIds.clear());
+  }
+
+  void _showFeedbackSnack({required String message, required bool isError}) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          backgroundColor: isError
+              ? const Color(0xFF9F2A24)
+              : const Color(0xFF1D6B34),
+          content: Row(
+            children: [
+              Icon(
+                isError ? Icons.error_outline : Icons.check_circle_outline,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(message)),
+            ],
+          ),
+        ),
+      );
   }
 
   @override
@@ -51,8 +165,20 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         ],
       ),
       body: _ChatBackground(
-        child: BlocBuilder<ChatBloc, ChatState>(
+        child: BlocConsumer<ChatBloc, ChatState>(
           bloc: _bloc,
+          listenWhen: (previous, current) =>
+              previous.errorMessage != current.errorMessage ||
+              previous.conversations != current.conversations,
+          listener: (context, state) {
+            _syncDeletingStateWith(state.conversations);
+
+            final error = (state.errorMessage ?? '').trim();
+            if (error.isEmpty || _deletingConversationIds.isEmpty) return;
+
+            _clearDeletingState();
+            _showFeedbackSnack(message: error, isError: true);
+          },
           builder: (context, state) {
             final hasError = (state.errorMessage ?? '').trim().isNotEmpty;
 
@@ -82,6 +208,61 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                         )
                       : const SizedBox.shrink(
                           key: ValueKey('conversations-not-syncing'),
+                        ),
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 190),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: _pendingConversationId == null
+                      ? const SizedBox.shrink(
+                          key: ValueKey('conversation-open-idle'),
+                        )
+                      : Padding(
+                          key: ValueKey(
+                            'conversation-open-$_pendingConversationId',
+                          ),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 9,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF12304A,
+                              ).withValues(alpha: 0.82),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFAED3FF),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Ouverture de la conversation...',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                 ),
                 AnimatedSwitcher(
@@ -137,17 +318,54 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           final conversation = state.conversations[index];
-          return _StaggerReveal(
-            index: index,
-            identity: 'conversation-${conversation.id}',
-            child: ConversationCard(
-              conversation: conversation,
-              onTap: () {
-                context.pushNamed(
-                  'chatConversation',
-                  pathParameters: {'conversationId': conversation.id},
-                );
-              },
+          final isDeleting = _deletingConversationIds.contains(conversation.id);
+          final isBusy = _pendingConversationId != null || isDeleting;
+
+          return Dismissible(
+            key: ValueKey('conversation-dismiss-${conversation.id}'),
+            direction: isBusy
+                ? DismissDirection.none
+                : DismissDirection.endToStart,
+            confirmDismiss: (_) async {
+              final shouldDelete = await _confirmDeleteConversation();
+              if (!shouldDelete) return false;
+              _deleteConversationForMe(conversation.id);
+              return false;
+            },
+            background: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF571C23).withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: const Color(0xFFFF8A80).withValues(alpha: 0.6),
+                ),
+              ),
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 16),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.delete_outline, color: Color(0xFFFFB4AB)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Supprimer',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            child: _StaggerReveal(
+              index: index,
+              identity: 'conversation-${conversation.id}',
+              child: ConversationCard(
+                conversation: conversation,
+                isProcessing:
+                    _pendingConversationId == conversation.id || isDeleting,
+                onTap: () => _openConversation(conversation.id),
+              ),
             ),
           );
         },

@@ -6,11 +6,13 @@ import '../../domain/entities/recommendation_entity.dart';
 class RecommendationCard extends StatefulWidget {
   final RecommendationEntity recommendation;
   final VoidCallback onTap;
+  final bool isProcessing;
 
   const RecommendationCard({
     super.key,
     required this.recommendation,
     required this.onTap,
+    this.isProcessing = false,
   });
 
   @override
@@ -30,29 +32,32 @@ class _RecommendationCardState extends State<RecommendationCard> {
     final recommendation = widget.recommendation;
     final safeDescription = recommendation.description.trim();
     final safeReason = recommendation.reason.trim();
+    final canInteract = !widget.isProcessing;
 
     return AnimatedScale(
       duration: const Duration(milliseconds: 130),
       curve: Curves.easeOutCubic,
-      scale: _isPressed ? 0.987 : 1,
+      scale: widget.isProcessing ? 1 : (_isPressed ? 0.987 : 1),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTapDown: (_) => _setPressed(true),
-          onTapCancel: () => _setPressed(false),
-          onTapUp: (_) => _setPressed(false),
-          onTap: () {
-            HapticFeedback.lightImpact();
-            widget.onTap();
-          },
+          onTapDown: canInteract ? (_) => _setPressed(true) : null,
+          onTapCancel: canInteract ? () => _setPressed(false) : null,
+          onTapUp: canInteract ? (_) => _setPressed(false) : null,
+          onTap: canInteract
+              ? () {
+                  HapticFeedback.lightImpact();
+                  widget.onTap();
+                }
+              : null,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 140),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
-              color: const Color(
-                0xFF10253A,
-              ).withValues(alpha: _isPressed ? 0.9 : 0.82),
+              color: const Color(0xFF10253A).withValues(
+                alpha: widget.isProcessing ? 0.72 : (_isPressed ? 0.9 : 0.82),
+              ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: Colors.white.withValues(alpha: _isPressed ? 0.2 : 0.1),
@@ -67,148 +72,202 @@ class _RecommendationCardState extends State<RecommendationCard> {
                 ),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
-                  child: Stack(
-                    children: [
-                      _PosterHeader(posterUrl: recommendation.mediaPoster),
-                      Positioned.fill(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.1),
-                                Colors.black.withValues(alpha: 0.74),
-                              ],
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                      child: Stack(
+                        children: [
+                          _PosterHeader(posterUrl: recommendation.mediaPoster),
+                          Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.1),
+                                    Colors.black.withValues(alpha: 0.74),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 12,
-                        left: 12,
-                        child: _InfoChip(
-                          icon: Icons.movie_creation_outlined,
-                          label: _mediaTypeLabel(recommendation.mediaType),
-                        ),
-                      ),
-                      Positioned(
-                        top: 12,
-                        right: 12,
-                        child: _InfoChip(
-                          icon: Icons.star,
-                          label:
-                              '${recommendation.rating.toStringAsFixed(1)}/10',
-                        ),
-                      ),
-                      Positioned(
-                        left: 14,
-                        right: 14,
-                        bottom: 14,
-                        child: Text(
-                          recommendation.mediaTitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
+                          Positioned(
+                            top: 12,
+                            left: 12,
+                            child: _InfoChip(
+                              icon: Icons.movie_creation_outlined,
+                              label: _mediaTypeLabel(recommendation.mediaType),
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (safeDescription.isNotEmpty) ...[
-                        Text(
-                          safeDescription,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.84),
-                            fontSize: 13,
-                            height: 1.3,
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: _InfoChip(
+                              icon: Icons.star,
+                              label:
+                                  '${recommendation.rating.toStringAsFixed(1)}/10',
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                      ],
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.auto_awesome_outlined,
-                            size: 16,
-                            color: Color(0xFFAED3FF),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
+                          Positioned(
+                            left: 14,
+                            right: 14,
+                            bottom: 14,
                             child: Text(
-                              safeReason.isEmpty
-                                  ? 'Suggestion personnalisee'
-                                  : safeReason,
+                              recommendation.mediaTitle,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 13,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      if (recommendation.genres.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: recommendation.genres
-                              .take(3)
-                              .map(
-                                (genre) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF17324C),
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.12,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    genre,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.9,
-                                      ),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (safeDescription.isNotEmpty) ...[
+                            Text(
+                              safeDescription,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.84),
+                                fontSize: 13,
+                                height: 1.3,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(
+                                Icons.auto_awesome_outlined,
+                                size: 16,
+                                color: Color(0xFFAED3FF),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  safeReason.isEmpty
+                                      ? 'Suggestion personnalisee'
+                                      : safeReason,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 13,
                                   ),
                                 ),
-                              )
-                              .toList(),
-                        ),
-                      ],
-                    ],
-                  ),
+                              ),
+                            ],
+                          ),
+                          if (recommendation.genres.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: recommendation.genres
+                                  .take(3)
+                                  .map(
+                                    (genre) => Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF17324C),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        genre,
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.9,
+                                          ),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+                if (widget.isProcessing)
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF12304A,
+                            ).withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFAED3FF),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Ouverture...',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

@@ -8,11 +8,13 @@ import 'package:timeago/timeago.dart' as timeago;
 class ConversationCard extends StatefulWidget {
   final ChatConversationEntity conversation;
   final VoidCallback onTap;
+  final bool isProcessing;
 
   const ConversationCard({
     super.key,
     required this.conversation,
     required this.onTap,
+    this.isProcessing = false,
   });
 
   @override
@@ -39,6 +41,7 @@ class _ConversationCardState extends State<ConversationCard> {
         : rawOtherUserName.trim();
     final otherUserImage = conversation.getOtherParticipantImage(currentUserId);
     final unreadCount = conversation.getUnreadCountForUser(currentUserId);
+    final canInteract = !widget.isProcessing;
 
     final baseLastMessage = (conversation.lastMessage ?? '').trim();
     final lastMessage = baseLastMessage.isEmpty
@@ -58,20 +61,22 @@ class _ConversationCardState extends State<ConversationCard> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTapDown: (_) => _setPressed(true),
-          onTapCancel: () => _setPressed(false),
-          onTapUp: (_) => _setPressed(false),
-          onTap: () {
-            HapticFeedback.lightImpact();
-            widget.onTap();
-          },
+          onTapDown: canInteract ? (_) => _setPressed(true) : null,
+          onTapCancel: canInteract ? () => _setPressed(false) : null,
+          onTapUp: canInteract ? (_) => _setPressed(false) : null,
+          onTap: canInteract
+              ? () {
+                  HapticFeedback.lightImpact();
+                  widget.onTap();
+                }
+              : null,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 140),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
-              color: const Color(
-                0xFF10253A,
-              ).withValues(alpha: _isPressed ? 0.9 : 0.82),
+              color: const Color(0xFF10253A).withValues(
+                alpha: widget.isProcessing ? 0.72 : (_isPressed ? 0.9 : 0.82),
+              ),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: Colors.white.withValues(alpha: _isPressed ? 0.2 : 0.1),
@@ -182,8 +187,46 @@ class _ConversationCardState extends State<ConversationCard> {
                           ],
                         ],
                       ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        child: widget.isProcessing
+                            ? Padding(
+                                key: const ValueKey(
+                                  'conversation-processing-text',
+                                ),
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  'Ouverture...',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.76),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(
+                                key: ValueKey('conversation-processing-idle'),
+                              ),
+                      ),
                     ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: widget.isProcessing
+                      ? const SizedBox(
+                          key: ValueKey('conversation-processing-spinner'),
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFFAED3FF),
+                          ),
+                        )
+                      : const SizedBox.shrink(
+                          key: ValueKey('conversation-processing-no-spinner'),
+                        ),
                 ),
               ],
             ),

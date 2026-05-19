@@ -7,6 +7,8 @@ class ChatConversationModel {
   final List<String> participantIds;
   final Map<String, String> participantNames;
   final Map<String, String> participantImages;
+  final bool isMessagingAllowed;
+  final List<String> deletedForUserIds;
   final String? lastMessage;
   final DateTime? lastMessageTime;
   final String? lastMessageSenderId;
@@ -17,6 +19,8 @@ class ChatConversationModel {
     required this.participantIds,
     required this.participantNames,
     required this.participantImages,
+    this.isMessagingAllowed = true,
+    this.deletedForUserIds = const [],
     this.lastMessage,
     this.lastMessageTime,
     this.lastMessageSenderId,
@@ -36,6 +40,8 @@ class ChatConversationModel {
       participantImages: Map<String, String>.from(
         data['participantImages'] ?? {},
       ),
+      isMessagingAllowed: data['isMessagingAllowed'] != false,
+      deletedForUserIds: (data['deletedFor'] as List?)?.cast<String>() ?? [],
       lastMessage: data['lastMessage'],
       lastMessageTime: data['lastMessageTime'] != null
           ? (data['lastMessageTime'] as Timestamp).toDate()
@@ -55,9 +61,12 @@ class ChatConversationModel {
       'participantIds': participantIds,
       'participantNames': participantNames,
       'participantImages': participantImages,
+      'isMessagingAllowed': isMessagingAllowed,
+      'deletedFor': deletedForUserIds,
       'lastMessage': lastMessage,
-      'lastMessageTime':
-          lastMessageTime != null ? Timestamp.fromDate(lastMessageTime!) : null,
+      'lastMessageTime': lastMessageTime != null
+          ? Timestamp.fromDate(lastMessageTime!)
+          : null,
       'lastMessageSenderId': lastMessageSenderId,
       'unreadCount': unreadCount,
     };
@@ -69,6 +78,8 @@ class ChatConversationModel {
       participantIds: participantIds,
       participantNames: participantNames,
       participantImages: participantImages,
+      isMessagingAllowed: isMessagingAllowed,
+      deletedForUserIds: deletedForUserIds,
       lastMessage: lastMessage,
       lastMessageTime: lastMessageTime,
       lastMessageSenderId: lastMessageSenderId,
