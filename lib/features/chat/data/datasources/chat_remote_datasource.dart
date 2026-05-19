@@ -15,16 +15,14 @@ abstract class ChatRemoteDataSource {
   });
   Future<String> getOrCreateConversation(String friendId);
   Future<void> markMessagesAsRead(String conversationId);
+  Future<void> deleteConversationForMe(String conversationId);
 }
 
 class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
 
-  ChatRemoteDataSourceImpl({
-    required this.firestore,
-    required this.auth,
-  });
+  ChatRemoteDataSourceImpl({required this.firestore, required this.auth});
 
   String get _currentUserId {
     final user = auth.currentUser;
@@ -41,10 +39,14 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
           .orderBy('lastMessageTime', descending: true)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs
-            .map((doc) => ChatConversationModel.fromFirestore(doc))
-            .toList();
-      });
+            return snapshot.docs
+                .map((doc) => ChatConversationModel.fromFirestore(doc))
+                .where(
+                  (conversation) =>
+                      !conversation.deletedForUserIds.contains(_currentUserId),
+                )
+                .toList();
+          });
     } catch (e) {
       debugPrint('❌ CONVERSATIONS ERROR: $e');
       throw ServerException(e.toString());
@@ -60,10 +62,10 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
           .orderBy('timestamp', descending: false)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs
-            .map((doc) => ChatMessageModel.fromFirestore(doc))
-            .toList();
-      });
+            return snapshot.docs
+                .map((doc) => ChatMessageModel.fromFirestore(doc))
+                .toList();
+          });
     } catch (e) {
       debugPrint('❌ MESSAGES ERROR: $e');
       throw ServerException(e.toString());
@@ -79,6 +81,53 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
       final currentUser = auth.currentUser;
       if (currentUser == null) throw ServerException('Non authentifié');
 
+      final convRef = firestore.collection('conversations').doc(conversationId);
+      final convDoc = await convRef.get();
+      if (!convDoc.exists) {
+        throw ServerException('Conversation introuvable');
+      }
+
+      final convData = convDoc.data() ?? {};
+      final participantIds =
+          (convData['participantIds'] as List?)?.cast<String>() ?? [];
+
+      if (!participantIds.contains(_currentUserId)) {
+        throw ServerException(
+          'Vous ne pouvez pas envoyer de messages dans cette conversation',
+        );
+      }
+
+      final otherParticipantId = participantIds.firstWhere(
+        (id) => id != _currentUserId,
+        orElse: () => '',
+      );
+
+      if (otherParticipantId.isEmpty) {
+        throw ServerException('Conversation invalide');
+      }
+
+      if (convData['isMessagingAllowed'] == false) {
+        throw ServerException(
+          'Vous ne pouvez plus envoyer de messages a cette personne car vous n\'etes plus amis',
+        );
+      }
+
+      // Double validation metier: si l'amitie n'existe plus, on bloque l'envoi
+      // et on verrouille la conversation en lecture seule pour les deux parties.
+      final friendshipSnapshot = await firestore
+          .collection('friendships')
+          .where('userId', isEqualTo: _currentUserId)
+          .where('friendId', isEqualTo: otherParticipantId)
+          .limit(1)
+          .get();
+
+      if (friendshipSnapshot.docs.isEmpty) {
+        await convRef.update({'isMessagingAllowed': false});
+        throw ServerException(
+          'Vous ne pouvez plus envoyer de messages a cette personne car vous n\'etes plus amis',
+        );
+      }
+
       final message = ChatMessageModel(
         id: '',
         conversationId: conversationId,
@@ -93,36 +142,29 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
       // Ajouter le message
       await firestore.collection('messages').add(message.toJson());
 
-      // Récupérer la conversation pour obtenir les participants
-      final convDoc =
-          await firestore.collection('conversations').doc(conversationId).get();
-      final convData = convDoc.data();
+      final unreadCount = Map<String, int>.from(
+        (convData['unreadCount'] as Map?)?.map(
+              (key, value) => MapEntry(key.toString(), (value as num).toInt()),
+            ) ??
+            {},
+      );
 
-      if (convData != null) {
-        final participantIds =
-            (convData['participantIds'] as List?)?.cast<String>() ?? [];
-        final unreadCount = Map<String, int>.from(
-          (convData['unreadCount'] as Map?)?.map(
-                (key, value) => MapEntry(key.toString(), value as int),
-              ) ??
-              {},
-        );
-
-        // Incrémenter le compteur de non-lus pour les autres participants
-        for (var participantId in participantIds) {
-          if (participantId != _currentUserId) {
-            unreadCount[participantId] = (unreadCount[participantId] ?? 0) + 1;
-          }
+      // Incrémenter le compteur de non-lus pour les autres participants
+      for (final participantId in participantIds) {
+        if (participantId != _currentUserId) {
+          unreadCount[participantId] = (unreadCount[participantId] ?? 0) + 1;
         }
-
-        // Mettre à jour la conversation
-        await firestore.collection('conversations').doc(conversationId).update({
-          'lastMessage': content,
-          'lastMessageTime': Timestamp.now(),
-          'lastMessageSenderId': _currentUserId,
-          'unreadCount': unreadCount,
-        });
       }
+
+      // Mettre à jour la conversation
+      await convRef.update({
+        'lastMessage': content,
+        'lastMessageTime': Timestamp.now(),
+        'lastMessageSenderId': _currentUserId,
+        'unreadCount': unreadCount,
+        'isMessagingAllowed': true,
+        'deletedFor': FieldValue.arrayRemove(participantIds),
+      });
 
       debugPrint('✅ MESSAGE SENT');
     } catch (e) {
@@ -144,6 +186,9 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
         final participantIds =
             (doc.data()['participantIds'] as List?)?.cast<String>() ?? [];
         if (participantIds.contains(friendId) && participantIds.length == 2) {
+          await doc.reference.update({
+            'deletedFor': FieldValue.arrayRemove([_currentUserId]),
+          });
           return doc.id;
         }
       }
@@ -153,8 +198,7 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
       if (currentUser == null) throw ServerException('Non authentifié');
 
       // Récupérer les infos de l'ami
-      final friendDoc =
-          await firestore.collection('users').doc(friendId).get();
+      final friendDoc = await firestore.collection('users').doc(friendId).get();
       final friendData = friendDoc.data() ?? {};
 
       final conversation = ChatConversationModel(
@@ -168,17 +212,17 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
           _currentUserId: currentUser.photoURL ?? '',
           friendId: friendData['photoURL'] ?? '',
         },
+        isMessagingAllowed: true,
+        deletedForUserIds: const [],
         lastMessage: null,
         lastMessageTime: DateTime.now(),
         lastMessageSenderId: null,
-        unreadCount: {
-          _currentUserId: 0,
-          friendId: 0,
-        },
+        unreadCount: {_currentUserId: 0, friendId: 0},
       );
 
-      final docRef =
-          await firestore.collection('conversations').add(conversation.toJson());
+      final docRef = await firestore
+          .collection('conversations')
+          .add(conversation.toJson());
 
       debugPrint('✅ CONVERSATION CREATED: ${docRef.id}');
       return docRef.id;
@@ -192,8 +236,10 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
   Future<void> markMessagesAsRead(String conversationId) async {
     try {
       // Récupérer la conversation
-      final convDoc =
-          await firestore.collection('conversations').doc(conversationId).get();
+      final convDoc = await firestore
+          .collection('conversations')
+          .doc(conversationId)
+          .get();
 
       if (convDoc.exists) {
         final unreadCount = Map<String, int>.from(
@@ -228,6 +274,36 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
       debugPrint('✅ MESSAGES MARKED AS READ');
     } catch (e) {
       debugPrint('❌ MARK AS READ ERROR: $e');
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> deleteConversationForMe(String conversationId) async {
+    try {
+      final convRef = firestore.collection('conversations').doc(conversationId);
+      final convDoc = await convRef.get();
+
+      if (!convDoc.exists) {
+        throw ServerException('Conversation introuvable');
+      }
+
+      final convData = convDoc.data() ?? {};
+      final participantIds =
+          (convData['participantIds'] as List?)?.cast<String>() ?? [];
+
+      if (!participantIds.contains(_currentUserId)) {
+        throw ServerException('Acces refuse a cette conversation');
+      }
+
+      await convRef.update({
+        'deletedFor': FieldValue.arrayUnion([_currentUserId]),
+        'unreadCount.$_currentUserId': 0,
+      });
+
+      debugPrint('✅ CONVERSATION DELETED FOR CURRENT USER');
+    } catch (e) {
+      debugPrint('❌ DELETE CONVERSATION ERROR: $e');
       throw ServerException(e.toString());
     }
   }

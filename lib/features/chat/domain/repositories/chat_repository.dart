@@ -20,4 +20,7 @@ abstract class ChatRepository {
 
   /// Marquer les messages comme lus
   Future<void> markMessagesAsRead(String conversationId);
+
+  /// Supprimer (masquer) une conversation seulement pour l'utilisateur actuel
+  Future<void> deleteConversationForMe(String conversationId);
 }

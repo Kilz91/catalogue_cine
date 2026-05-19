@@ -4,6 +4,8 @@ class ChatConversationEntity {
   final List<String> participantIds;
   final Map<String, String> participantNames; // userId -> displayName
   final Map<String, String> participantImages; // userId -> photoURL
+  final bool isMessagingAllowed; // false => conversation en lecture seule
+  final List<String> deletedForUserIds; // conversation masquee pour ces users
   final String? lastMessage;
   final DateTime? lastMessageTime;
   final String? lastMessageSenderId;
@@ -14,6 +16,8 @@ class ChatConversationEntity {
     required this.participantIds,
     required this.participantNames,
     required this.participantImages,
+    this.isMessagingAllowed = true,
+    this.deletedForUserIds = const [],
     this.lastMessage,
     this.lastMessageTime,
     this.lastMessageSenderId,

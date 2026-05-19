@@ -66,7 +66,17 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _sendMessage() {
     final content = _messageController.text.trim();
-    if (content.isEmpty) return;
+    if (content.isEmpty || _bloc.state.isSending) return;
+
+    if (!_isMessagingAllowedForCurrentConversation(_bloc.state)) {
+      HapticFeedback.mediumImpact();
+      _showFeedbackSnack(
+        message:
+            'Vous ne pouvez plus envoyer de messages a cette personne car vous n\'etes plus amis.',
+        isError: true,
+      );
+      return;
+    }
 
     HapticFeedback.lightImpact();
 
@@ -120,12 +130,71 @@ class _ChatScreenState extends State<ChatScreen> {
           listener: (context, state) {
             final message = (state.errorMessage ?? '').trim();
             if (message.isEmpty) return;
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(message)));
+            HapticFeedback.mediumImpact();
+            _showFeedbackSnack(message: message, isError: true);
           },
           child: Column(
             children: [
+              BlocBuilder<ChatBloc, ChatState>(
+                bloc: _bloc,
+                buildWhen: (previous, current) =>
+                    previous.isSending != current.isSending,
+                builder: (context, state) {
+                  return AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: state.isSending
+                        ? Padding(
+                            key: const ValueKey('chat-sending-banner'),
+                            padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 9,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF12304A,
+                                ).withValues(alpha: 0.82),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Color(0xFFAED3FF),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Envoi du message...',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(
+                            key: ValueKey('chat-idle-banner'),
+                          ),
+                  );
+                },
+              ),
               Expanded(
                 child: BlocBuilder<ChatBloc, ChatState>(
                   bloc: _bloc,
@@ -177,82 +246,184 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageInput() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF10253A).withValues(alpha: 0.94),
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _messageController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Ecris un message...',
-                  hintStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFF17324C),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 11,
-                  ),
-                ),
-                minLines: 1,
-                maxLines: 4,
-                textInputAction: TextInputAction.newline,
-              ),
-            ),
-            const SizedBox(width: 8),
-            BlocBuilder<ChatBloc, ChatState>(
-              bloc: _bloc,
-              builder: (context, state) {
-                final canSend = _hasText && !state.isSending;
+    return BlocBuilder<ChatBloc, ChatState>(
+      bloc: _bloc,
+      buildWhen: (previous, current) =>
+          previous.isSending != current.isSending ||
+          previous.conversations != current.conversations,
+      builder: (context, state) {
+        final isMessagingAllowed = _isMessagingAllowedForCurrentConversation(
+          state,
+        );
+        final canSend = _hasText && !state.isSending && isMessagingAllowed;
 
-                return AnimatedScale(
-                  duration: const Duration(milliseconds: 120),
-                  curve: Curves.easeOutCubic,
-                  scale: canSend ? 1 : 0.95,
-                  child: FilledButton(
-                    onPressed: canSend ? _sendMessage : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF4A7BF7),
-                      disabledBackgroundColor: const Color(
-                        0xFF4A7BF7,
-                      ).withValues(alpha: 0.45),
-                      shape: const CircleBorder(),
-                      padding: const EdgeInsets.all(14),
-                    ),
-                    child: state.isSending
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.send_rounded, color: Colors.white),
-                  ),
-                );
-              },
+        return Container(
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF10253A).withValues(alpha: 0.94),
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
             ),
-          ],
-        ),
-      ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: isMessagingAllowed
+                      ? const SizedBox.shrink(key: ValueKey('chat-input-open'))
+                      : Container(
+                          key: const ValueKey('chat-input-locked'),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 9,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF571C23,
+                            ).withValues(alpha: 0.82),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(
+                                0xFFFF8A80,
+                              ).withValues(alpha: 0.6),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.lock_outline,
+                                color: Color(0xFFFFB4AB),
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Vous n\'etes plus amis. Conversation conservee en lecture seule.',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.94),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        enabled: isMessagingAllowed,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: isMessagingAllowed
+                              ? 'Ecris un message...'
+                              : 'Envoi desactive',
+                          hintStyle: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFF17324C),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 11,
+                          ),
+                        ),
+                        minLines: 1,
+                        maxLines: 4,
+                        textInputAction: TextInputAction.newline,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedScale(
+                      duration: const Duration(milliseconds: 120),
+                      curve: Curves.easeOutCubic,
+                      scale: canSend ? 1 : 0.95,
+                      child: FilledButton(
+                        onPressed: canSend ? _sendMessage : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF4A7BF7),
+                          disabledBackgroundColor: const Color(
+                            0xFF4A7BF7,
+                          ).withValues(alpha: 0.45),
+                          shape: const CircleBorder(),
+                          padding: const EdgeInsets.all(14),
+                        ),
+                        child: state.isSending
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Icon(
+                                isMessagingAllowed
+                                    ? Icons.send_rounded
+                                    : Icons.lock_outline,
+                                color: Colors.white,
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
+  }
+
+  bool _isMessagingAllowedForCurrentConversation(ChatState state) {
+    for (final conversation in state.conversations) {
+      if (conversation.id == widget.conversationId) {
+        return conversation.isMessagingAllowed;
+      }
+    }
+    return true;
+  }
+
+  void _showFeedbackSnack({required String message, required bool isError}) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          backgroundColor: isError
+              ? const Color(0xFF9F2A24)
+              : const Color(0xFF1D6B34),
+          content: Row(
+            children: [
+              Icon(
+                isError ? Icons.error_outline : Icons.check_circle_outline,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(message)),
+            ],
+          ),
+        ),
+      );
   }
 }
 

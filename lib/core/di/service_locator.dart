@@ -49,6 +49,7 @@ import '../../features/chat/domain/usecases/get_messages_usecase.dart';
 import '../../features/chat/domain/usecases/send_message_usecase.dart';
 import '../../features/chat/domain/usecases/get_or_create_conversation_usecase.dart';
 import '../../features/chat/domain/usecases/mark_messages_as_read_usecase.dart';
+import '../../features/chat/domain/usecases/delete_conversation_for_me_usecase.dart';
 import '../../features/chat/presentation/bloc/chat_bloc.dart';
 
 /// Service locator pour l'injection de dépendances
@@ -220,9 +221,7 @@ Future<void> setupServiceLocator() async {
 
   // Repositories
   getIt.registerSingleton<ProgressRepository>(
-    ProgressRepositoryImpl(
-      getIt<ProgressRemoteDataSource>(),
-    ),
+    ProgressRepositoryImpl(getIt<ProgressRemoteDataSource>()),
   );
 
   // Use Cases
@@ -253,9 +252,7 @@ Future<void> setupServiceLocator() async {
 
   // Repositories
   getIt.registerSingleton<FriendsRepository>(
-    FriendsRepositoryImpl(
-      remoteDataSource: getIt<FriendsRemoteDataSource>(),
-    ),
+    FriendsRepositoryImpl(remoteDataSource: getIt<FriendsRemoteDataSource>()),
   );
 
   // Use Cases
@@ -365,6 +362,9 @@ Future<void> setupServiceLocator() async {
   getIt.registerSingleton<MarkMessagesAsReadUseCase>(
     MarkMessagesAsReadUseCase(getIt<ChatRepository>()),
   );
+  getIt.registerSingleton<DeleteConversationForMeUseCase>(
+    DeleteConversationForMeUseCase(getIt<ChatRepository>()),
+  );
 
   // BLoCs
   getIt.registerFactory<ChatBloc>(
@@ -374,6 +374,7 @@ Future<void> setupServiceLocator() async {
       sendMessageUseCase: getIt<SendMessageUseCase>(),
       getOrCreateConversationUseCase: getIt<GetOrCreateConversationUseCase>(),
       markMessagesAsReadUseCase: getIt<MarkMessagesAsReadUseCase>(),
+      deleteConversationForMeUseCase: getIt<DeleteConversationForMeUseCase>(),
     ),
   );
 }

@@ -24,12 +24,19 @@ class _FriendsScreenState extends State<FriendsScreen>
   late final TabController _tabController;
   final _searchController = TextEditingController();
   bool _isCreatingConversation = false;
+  String? _pendingActionKey;
+  int _currentTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _bloc = getIt<FriendsBloc>()..add(LoadFriendsDataEvent());
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (!mounted) return;
+      if (_currentTabIndex == _tabController.index) return;
+      setState(() => _currentTabIndex = _tabController.index);
+    });
 
     // Écouter les changements de texte pour la recherche
     _searchController.addListener(() {
@@ -71,26 +78,24 @@ class _FriendsScreenState extends State<FriendsScreen>
           bloc: _bloc,
           listenWhen: (previous, current) =>
               previous.errorMessage != current.errorMessage ||
-              previous.successMessage != current.successMessage,
+              previous.successMessage != current.successMessage ||
+              previous.isLoading != current.isLoading,
           listener: (context, state) {
-            final messenger = ScaffoldMessenger.of(context);
+            if (!state.isLoading && _pendingActionKey != null) {
+              _clearPendingAction();
+            }
 
             if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
-              messenger.showSnackBar(
-                SnackBar(
-                  content: Text(state.errorMessage!),
-                  backgroundColor: const Color(0xFFB3261E),
-                ),
-              );
+              HapticFeedback.mediumImpact();
+              _showFeedbackSnack(message: state.errorMessage!, isError: true);
             }
 
             if (state.successMessage != null &&
                 state.successMessage!.isNotEmpty) {
-              messenger.showSnackBar(
-                SnackBar(
-                  content: Text(state.successMessage!),
-                  backgroundColor: const Color(0xFF2E7D32),
-                ),
+              HapticFeedback.selectionClick();
+              _showFeedbackSnack(
+                message: state.successMessage!,
+                isError: false,
               );
             }
           },
@@ -133,6 +138,56 @@ class _FriendsScreenState extends State<FriendsScreen>
                           key: ValueKey('friends-not-syncing'),
                         ),
                 ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: _pendingActionKey == null
+                      ? const SizedBox.shrink(
+                          key: ValueKey('no-pending-action'),
+                        )
+                      : Padding(
+                          key: ValueKey(_pendingActionKey),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 9,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF12304A,
+                              ).withValues(alpha: 0.82),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFAED3FF),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _pendingActionLabel(_pendingActionKey),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                ),
                 _EntranceMotion(
                   delayMs: 90,
                   child: Padding(
@@ -156,9 +211,9 @@ class _FriendsScreenState extends State<FriendsScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddFriendDialog,
+        onPressed: _pendingActionKey == null ? _showAddFriendDialog : null,
         icon: const Icon(Icons.person_add),
-        label: const Text('Ajouter'),
+        label: Text(_currentTabIndex == 0 ? 'Ajouter' : 'Nouvel ami'),
         backgroundColor: const Color(0xFF4A7BF7),
         foregroundColor: Colors.white,
       ),
@@ -223,8 +278,14 @@ class _FriendsScreenState extends State<FriendsScreen>
             identity: 'friend-${friendship.id}',
             child: FriendCard(
               friendship: friendship,
+              isProcessing:
+                  _isActionPending('remove-${friendship.id}') ||
+                  _isActionPending('message-${friendship.friendId}'),
               onRemove: () {
-                _bloc.add(RemoveFriendEvent(friendship.id));
+                _dispatchAction(
+                  actionKey: 'remove-${friendship.id}',
+                  event: RemoveFriendEvent(friendship.id),
+                );
               },
               onMessage: () async {
                 _startConversation(friendship.friendId, friendship.friendName);
@@ -266,11 +327,20 @@ class _FriendsScreenState extends State<FriendsScreen>
             identity: 'received-${request.id}',
             child: ReceivedRequestCard(
               request: request,
+              isProcessing:
+                  _isActionPending('accept-${request.id}') ||
+                  _isActionPending('reject-${request.id}'),
               onAccept: () {
-                _bloc.add(AcceptFriendRequestEvent(request.id));
+                _dispatchAction(
+                  actionKey: 'accept-${request.id}',
+                  event: AcceptFriendRequestEvent(request.id),
+                );
               },
               onReject: () {
-                _bloc.add(RejectFriendRequestEvent(request.id));
+                _dispatchAction(
+                  actionKey: 'reject-${request.id}',
+                  event: RejectFriendRequestEvent(request.id),
+                );
               },
             ),
           );
@@ -309,8 +379,12 @@ class _FriendsScreenState extends State<FriendsScreen>
             identity: 'sent-${request.id}',
             child: SentRequestCard(
               request: request,
+              isProcessing: _isActionPending('cancel-${request.id}'),
               onCancel: () {
-                _bloc.add(CancelFriendRequestEvent(request.id));
+                _dispatchAction(
+                  actionKey: 'cancel-${request.id}',
+                  event: CancelFriendRequestEvent(request.id),
+                );
               },
             ),
           );
@@ -330,6 +404,18 @@ class _FriendsScreenState extends State<FriendsScreen>
       builder: (sheetContext) => BlocBuilder<FriendsBloc, FriendsState>(
         bloc: _bloc,
         builder: (context, state) {
+          final friendIds = state.friends
+              .map((friendship) => friendship.friendId)
+              .toSet();
+          final sentRequestUserIds = state.sentRequests
+              .where((request) => request.status == 'pending')
+              .map((request) => request.receiverId)
+              .toSet();
+          final receivedRequestUserIds = state.receivedRequests
+              .where((request) => request.status == 'pending')
+              .map((request) => request.senderId)
+              .toSet();
+
           return SafeArea(
             child: Padding(
               padding: EdgeInsets.fromLTRB(
@@ -405,6 +491,19 @@ class _FriendsScreenState extends State<FriendsScreen>
                           final initial = user.displayName.isNotEmpty
                               ? user.displayName[0].toUpperCase()
                               : '?';
+                          final userId = user.userId;
+                          final isAlreadyFriend = friendIds.contains(userId);
+                          final hasPendingSentRequest = sentRequestUserIds
+                              .contains(userId);
+                          final hasPendingReceivedRequest =
+                              receivedRequestUserIds.contains(userId);
+                          final isSending = _isActionPending('send-$userId');
+
+                          final canSendRequest =
+                              !isAlreadyFriend &&
+                              !hasPendingSentRequest &&
+                              !hasPendingReceivedRequest &&
+                              _pendingActionKey == null;
 
                           return ListTile(
                             dense: true,
@@ -425,16 +524,65 @@ class _FriendsScreenState extends State<FriendsScreen>
                                 color: Colors.white.withValues(alpha: 0.72),
                               ),
                             ),
-                            trailing: IconButton(
-                              icon: const Icon(
-                                Icons.person_add,
-                                color: Color(0xFFAED3FF),
-                              ),
-                              onPressed: () {
-                                _bloc.add(SendFriendRequestEvent(user.userId));
-                                _searchController.clear();
-                                Navigator.pop(sheetContext);
-                              },
+                            trailing: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              switchInCurve: Curves.easeOutCubic,
+                              switchOutCurve: Curves.easeInCubic,
+                              child: isSending
+                                  ? const SizedBox(
+                                      key: ValueKey('search-sending'),
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFFAED3FF),
+                                      ),
+                                    )
+                                  : isAlreadyFriend
+                                  ? const _SearchStatusPill(
+                                      key: ValueKey('search-status-friend'),
+                                      label: 'Deja ami',
+                                      icon: Icons.check_circle_outline,
+                                      color: Color(0xFF5CCF8A),
+                                    )
+                                  : hasPendingSentRequest
+                                  ? const _SearchStatusPill(
+                                      key: ValueKey('search-status-sent'),
+                                      label: 'Envoyee',
+                                      icon: Icons.schedule_outlined,
+                                      color: Color(0xFFFFC857),
+                                    )
+                                  : hasPendingReceivedRequest
+                                  ? _SearchStatusPill(
+                                      key: const ValueKey(
+                                        'search-status-received',
+                                      ),
+                                      label: 'Recue',
+                                      icon: Icons.mail_outline,
+                                      color: const Color(0xFFAED3FF),
+                                      onTap: () => _openReceivedTabFromSearch(
+                                        sheetContext,
+                                      ),
+                                    )
+                                  : IconButton(
+                                      key: const ValueKey('search-status-add'),
+                                      icon: const Icon(
+                                        Icons.person_add,
+                                        color: Color(0xFFAED3FF),
+                                      ),
+                                      onPressed: canSendRequest
+                                          ? () {
+                                              _dispatchAction(
+                                                actionKey: 'send-$userId',
+                                                event: SendFriendRequestEvent(
+                                                  userId,
+                                                ),
+                                              );
+                                              _searchController.clear();
+                                              Navigator.pop(sheetContext);
+                                            }
+                                          : null,
+                                    ),
                             ),
                           );
                         },
@@ -462,9 +610,84 @@ class _FriendsScreenState extends State<FriendsScreen>
     });
   }
 
+  void _openReceivedTabFromSearch(BuildContext sheetContext) {
+    HapticFeedback.selectionClick();
+    _searchController.clear();
+
+    if (Navigator.canPop(sheetContext)) {
+      Navigator.pop(sheetContext);
+    }
+
+    Future<void>.delayed(const Duration(milliseconds: 120), () {
+      if (!mounted) return;
+      _tabController.animateTo(1);
+    });
+  }
+
+  void _dispatchAction({
+    required String actionKey,
+    required FriendsEvent event,
+  }) {
+    if (_pendingActionKey != null || _isCreatingConversation) return;
+    setState(() => _pendingActionKey = actionKey);
+    HapticFeedback.lightImpact();
+    _bloc.add(event);
+  }
+
+  bool _isActionPending(String actionKey) => _pendingActionKey == actionKey;
+
+  void _clearPendingAction() {
+    if (!mounted || _pendingActionKey == null) return;
+    setState(() => _pendingActionKey = null);
+  }
+
+  String _pendingActionLabel(String? actionKey) {
+    if (actionKey == null) return 'Mise a jour...';
+    if (actionKey.startsWith('remove-')) return 'Suppression de l\'ami...';
+    if (actionKey.startsWith('accept-')) return 'Validation de la demande...';
+    if (actionKey.startsWith('reject-')) return 'Refus de la demande...';
+    if (actionKey.startsWith('cancel-')) return 'Annulation de la demande...';
+    if (actionKey.startsWith('send-')) return 'Envoi de la demande...';
+    if (actionKey.startsWith('message-')) {
+      return 'Ouverture de la conversation...';
+    }
+    return 'Mise a jour...';
+  }
+
+  void _showFeedbackSnack({required String message, required bool isError}) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          backgroundColor: isError
+              ? const Color(0xFF9F2A24)
+              : const Color(0xFF1D6B34),
+          content: Row(
+            children: [
+              Icon(
+                isError ? Icons.error_outline : Icons.check_circle_outline,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(message)),
+            ],
+          ),
+        ),
+      );
+  }
+
   Future<void> _startConversation(String friendId, String friendName) async {
-    if (_isCreatingConversation) return;
-    setState(() => _isCreatingConversation = true);
+    if (_isCreatingConversation || _pendingActionKey != null) return;
+    setState(() {
+      _isCreatingConversation = true;
+      _pendingActionKey = 'message-$friendId';
+    });
 
     // Afficher un loader pendant la création de la conversation
     showDialog(
@@ -482,7 +705,10 @@ class _FriendsScreenState extends State<FriendsScreen>
       if (mounted) {
         // Fermer le loader
         Navigator.pop(context);
-        setState(() => _isCreatingConversation = false);
+        setState(() {
+          _isCreatingConversation = false;
+          _pendingActionKey = null;
+        });
 
         // Naviguer vers le chat
         context.pushNamed(
@@ -494,15 +720,13 @@ class _FriendsScreenState extends State<FriendsScreen>
       if (mounted) {
         // Fermer le loader
         Navigator.pop(context);
-        setState(() => _isCreatingConversation = false);
+        setState(() {
+          _isCreatingConversation = false;
+          _pendingActionKey = null;
+        });
 
         // Afficher l'erreur
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${e.toString()}'),
-            backgroundColor: const Color(0xFFB3261E),
-          ),
-        );
+        _showFeedbackSnack(message: 'Erreur: ${e.toString()}', isError: true);
       }
     }
   }
@@ -569,6 +793,64 @@ class _GlowCircle extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchStatusPill extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _SearchStatusPill({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (onTap == null) {
+      return pill;
+    }
+
+    return Tooltip(
+      message: 'Voir les demandes recues',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: onTap,
+          child: pill,
         ),
       ),
     );

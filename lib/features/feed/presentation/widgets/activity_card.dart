@@ -6,8 +6,14 @@ import '../../domain/entities/activity_entity.dart';
 class ActivityCard extends StatefulWidget {
   final ActivityEntity activity;
   final VoidCallback onTap;
+  final bool isProcessing;
 
-  const ActivityCard({super.key, required this.activity, required this.onTap});
+  const ActivityCard({
+    super.key,
+    required this.activity,
+    required this.onTap,
+    this.isProcessing = false,
+  });
 
   @override
   State<ActivityCard> createState() => _ActivityCardState();
@@ -27,29 +33,32 @@ class _ActivityCardState extends State<ActivityCard> {
     final safeUserName = activity.userName.trim().isEmpty
         ? 'Ami'
         : activity.userName.trim();
+    final canInteract = !widget.isProcessing;
 
     return AnimatedScale(
       duration: const Duration(milliseconds: 130),
       curve: Curves.easeOutCubic,
-      scale: _isPressed ? 0.986 : 1,
+      scale: widget.isProcessing ? 1 : (_isPressed ? 0.986 : 1),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTapDown: (_) => _setPressed(true),
-          onTapCancel: () => _setPressed(false),
-          onTapUp: (_) => _setPressed(false),
-          onTap: () {
-            HapticFeedback.lightImpact();
-            widget.onTap();
-          },
+          onTapDown: canInteract ? (_) => _setPressed(true) : null,
+          onTapCancel: canInteract ? () => _setPressed(false) : null,
+          onTapUp: canInteract ? (_) => _setPressed(false) : null,
+          onTap: canInteract
+              ? () {
+                  HapticFeedback.lightImpact();
+                  widget.onTap();
+                }
+              : null,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 140),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
-              color: const Color(
-                0xFF10253A,
-              ).withValues(alpha: _isPressed ? 0.9 : 0.82),
+              color: const Color(0xFF10253A).withValues(
+                alpha: widget.isProcessing ? 0.72 : (_isPressed ? 0.9 : 0.82),
+              ),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: Colors.white.withValues(alpha: _isPressed ? 0.2 : 0.1),
@@ -65,101 +74,153 @@ class _ActivityCardState extends State<ActivityCard> {
               ],
             ),
             padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
               children: [
-                _ActivityAvatar(
-                  userImage: activity.userImage,
-                  userName: safeUserName,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ActivityAvatar(
+                      userImage: activity.userImage,
+                      userName: safeUserName,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: safeUserName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: ' ${activity.actionLabel}',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.82,
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: RichText(
+                                  text: TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: safeUserName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                        ),
                                       ),
-                                      fontSize: 14,
-                                    ),
+                                      TextSpan(
+                                        text: ' ${activity.actionLabel}',
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.82,
+                                          ),
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
+                              const SizedBox(width: 8),
+                              _TimeChip(
+                                value: _formatRelativeTime(activity.timestamp),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            activity.mediaTitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          _TimeChip(
-                            value: _formatRelativeTime(activity.timestamp),
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF17324C),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.12),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _actionIcon(activity.actionType),
+                                  size: 14,
+                                  color: const Color(0xFFAED3FF),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _mediaTypeLabel(activity.mediaType),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        activity.mediaTitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    ),
+                    const SizedBox(width: 12),
+                    _PosterPreview(posterUrl: activity.mediaPoster),
+                  ],
+                ),
+                if (widget.isProcessing)
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF17324C),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.12),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF12304A,
+                            ).withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFAED3FF),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Ouverture...',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _actionIcon(activity.actionType),
-                              size: 14,
-                              color: const Color(0xFFAED3FF),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _mediaTypeLabel(activity.mediaType),
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                _PosterPreview(posterUrl: activity.mediaPoster),
               ],
             ),
           ),
